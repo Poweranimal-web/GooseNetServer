@@ -1,6 +1,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "request.h"
+#ifndef ROUTER
+#define ROUTER
+enum Method{
+    GET,
+    POST,
+    PUT,
+    DELETE
+};
 typedef struct route
 {
     char* path;
@@ -12,22 +20,29 @@ typedef struct state
     int index; // current index of free cell in array
     int last; // last index  in array
 } StateArray;
-enum Method{
-    GET,
-    POST,
-    PUT,
-    DELETE
-};
-Route* ArrayRoutes = (Route*)(malloc(sizeof(Route)*4)); // storing routes that consisting of (path, method, handler) for webserver
+Route* ArrayRoutes; // storing routes that consisting of (path, method, handler) for webserver
 StateArray stateRoute; // storing state of ArrayRoutes 
-void MapGet(char* path, void (*handler)(char* request)); // append GET request handler to ArrayRoutes
-int InitiliazeState(StateArray* state); // create properties for StateArray to start enumate ArrayRoutes
-int InitiliazeState(StateArray* state){
-    state->index = 0;
-    state->last = 4;
+int Init = 0;
+void MapGet(char* path, void (*handler)(Request request)); // append GET request handler to ArrayRoutes
+int InitiliazeStateRoute(); // create properties for StateArray to start enumate ArrayRoutes
+int InitiliazeStateRoute(){
+    ArrayRoutes = (Route*)(malloc(sizeof(Route)*4));;
+    stateRoute.index = 0;
+    stateRoute.last = 4;
     return 0;
 }
 void MapGet(char* path, void (*handler)(Request request)){
+    if (Init == 0){
+        InitiliazeStateRoute();
+        Init = 1;
+    }
+    if (stateRoute.index >= stateRoute.last){
+        stateRoute.last = stateRoute.index + 1;
+        ArrayRoutes = (Route*)realloc(ArrayRoutes, sizeof(Route)*(stateRoute.last));
+        if (ArrayRoutes == NULL) {
+            fprintf(stderr, "Memory reallocation failed\n");
+        }
+    }
     Route route;
     route.path = path;
     route.handler = handler;
@@ -37,10 +52,14 @@ void MapGet(char* path, void (*handler)(Request request)){
 void LinearSearchRoute(char* path, Request request){
     for (int i = 0; i < stateRoute.last; i++)
     {
-        if (strcmp(ArrayRoutes[i].path, path) == 0){
+        int resultSearch = ArrayRoutes[i].path != NULL ? strcmp(ArrayRoutes[i].path, path) : -1;
+        if (resultSearch == 0){
             ArrayRoutes[i].handler(request);
+            return;
         }
     }
+    printf("Unfound path!\n");
     
 
 }
+#endif

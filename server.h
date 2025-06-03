@@ -6,7 +6,9 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 #include "request.h"
+#include "router.h"
 typedef struct server
 {
    char* host;
@@ -14,7 +16,6 @@ typedef struct server
    short int isRunning;
    int descriptor;
 } Server;
-
 void startListing(Server object){
     int sock = socket(AF_INET,SOCK_STREAM,0);
     int true = 1;
@@ -39,14 +40,10 @@ void startListing(Server object){
             printf("data length: %d\n", length);
             buffer[length] = '\0';
             if (length > 0){
-                printf("%s\n\n", buffer);
-                clock_t start, end;
-                double cpu_time_used;
-                start = clock();
                 Request request = parseRequest(buffer);
-                end = clock();
-                cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-                printf("Time taken: %f seconds\n", cpu_time_used);
+                request.fd = client;
+                LinearSearchRoute(request.path, request);
+                freeRequest(&request);
             }
             close(client);
         }
