@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include "request.h"
 #include "router.h"
+#include "client.h"
 typedef struct server
 {
    char* host;
@@ -35,14 +36,13 @@ void startListing(Server object){
         while (1)
         {
             int client = accept(sock, (struct sockaddr*)NULL, NULL);
-            // printf("Client has joined %d\n", client);
             int length = recv(client, buffer, sizeof(buffer)-1, 0);
-            printf("data length: %d\n", length);
             buffer[length] = '\0';
             if (length > 0){
                 Request request = parseRequest(buffer);
-                request.fd = client;
-                LinearSearchRoute(request.path, request);
+                Client Client;
+                Client.fd = client;
+                LinearSearchRoute(request.path, request, Client);
                 freeRequest(&request);
             }
             close(client);

@@ -3,7 +3,7 @@
 #define REQUEST
 #define MAX_HEADER_NAME_SIZE 64
 #define MAX_HEADER_VALUE_SIZE 4000
-typedef struct headers{
+typedef struct response_headers{
     char* Host;
     char* Accept;
     char* Accept_Charset;
@@ -22,7 +22,6 @@ typedef struct request
   char method[10];
   char path[4096];
   char version[15];
-  int fd;
   Header headers;  
 } Request;
 enum HeaderType {

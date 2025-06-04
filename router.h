@@ -1,8 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "request.h"
+#include "client.h"
+#include "response.h"
 #ifndef ROUTER
 #define ROUTER
+#define RESULTPATH(client_path, founded_path) \
+founded_path != NULL ? strcmp(founded_path, client_path) : -1 // method  for comparing address was requested by client and founded path, if founded_path is null return -1
 enum Method{
     GET,
     POST,
@@ -13,7 +17,7 @@ typedef struct route
 {
     char* path;
     enum Method method;
-    void (*handler)(Request request);
+    void (*handler)(Request request, Client client);
 } Route;
 typedef struct state
 {
@@ -23,7 +27,7 @@ typedef struct state
 Route* ArrayRoutes; // storing routes that consisting of (path, method, handler) for webserver
 StateArray stateRoute; // storing state of ArrayRoutes 
 int Init = 0;
-void MapGet(char* path, void (*handler)(Request request)); // append GET request handler to ArrayRoutes
+void MapGet(char* path, void (*handler)(Request request, Client client)); // append GET request handler to ArrayRoutes
 int InitiliazeStateRoute(); // create properties for StateArray to start enumate ArrayRoutes
 int InitiliazeStateRoute(){
     ArrayRoutes = (Route*)(malloc(sizeof(Route)*4));;
@@ -31,7 +35,7 @@ int InitiliazeStateRoute(){
     stateRoute.last = 4;
     return 0;
 }
-void MapGet(char* path, void (*handler)(Request request)){
+void MapGet(char* path, void (*handler)(Request request, Client client)){
     if (Init == 0){
         InitiliazeStateRoute();
         Init = 1;
@@ -49,17 +53,15 @@ void MapGet(char* path, void (*handler)(Request request)){
     route.method = GET;
     ArrayRoutes[stateRoute.index++] = route;
 }
-void LinearSearchRoute(char* path, Request request){
+void LinearSearchRoute(char* path, Request request, Client client){
     for (int i = 0; i < stateRoute.last; i++)
     {
-        int resultSearch = ArrayRoutes[i].path != NULL ? strcmp(ArrayRoutes[i].path, path) : -1;
+        int resultSearch = RESULTPATH(path, ArrayRoutes[i].path);
         if (resultSearch == 0){
-            ArrayRoutes[i].handler(request);
+            ArrayRoutes[i].handler(request,client);
             return;
         }
     }
-    printf("Unfound path!\n");
-    
-
+    renderErrorHTML(client);
 }
 #endif
