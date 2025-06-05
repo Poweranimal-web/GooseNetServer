@@ -176,6 +176,29 @@ char* readHtml(char* path){
     }
     fclose(file);
     return html;
+}
+char* readfile(char* path){
+    FILE* file;
+    int i = 0;
+    char fullpath[50] = "./html";
+    strcat(fullpath, path);
+    file = fopen(fullpath, "r");
+    if (file != NULL){
+        fseek(file, 0, SEEK_END);
+        long size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        char* fileCustom = (char*)(malloc(sizeof(char)* size));
+        int ch = fgetc(file);
+        while (ch != EOF){
+            fileCustom[i++]= (char)ch;
+            ch = fgetc(file);
+        }
+        fclose(file);
+        return fileCustom;
+    }
+    else{
+        return "e";
+    }
 
 }
 Response createHTMLResponse(char* path, char* status){
@@ -185,6 +208,28 @@ Response createHTMLResponse(char* path, char* status){
     response.version = "HTTP/1.1";
     response.body = readHtml(path);
     response.headers.Content_Type = "text/html";
+    response.headers.Content_Length = strlen(response.body);
+    response.headers.Connection = "close";
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    sprintf(response.headers.Date,  "%s, %02d %02d %4d %02d:%02d:%02d GMT" ,
+    weekDays[tm.tm_wday],tm.tm_mday,tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    return response;
+}
+Response createResponse(char* path,char* type,char* status){
+    Response response;
+    response.version = "HTTP/1.1";;
+    char* bodyResult = readfile(path);
+    if (strcmp(bodyResult, "e") == 0){
+        response.status = "404";
+        response.phrase = returnPhrase("404");
+    }
+    else{
+        response.status = status;
+        response.body = bodyResult; 
+        response.phrase = returnPhrase(response.status);
+    }
+    response.headers.Content_Type = type;
     response.headers.Content_Length = strlen(response.body);
     response.headers.Connection = "close";
     time_t t = time(NULL);
@@ -210,6 +255,7 @@ int renderHTML(char* path_html, Client client){
         response.headers.Connection, response.body);
     send(client.fd, Response, strlen(Response), 0);
     free(response.body);
+    close(client.fd);
     return 0;
 }
 int renderErrorHTML(Client client){
@@ -228,6 +274,59 @@ int renderErrorHTML(Client client){
         response.headers.Connection, response.body);
     send(client.fd, Response, strlen(Response), 0);
     free(response.body);
+    close(client.fd);
     return 0;
+}
+int renderJS(char* path, Client client){
+    Response response = createResponse(path,"text/javascript", "200");
+    if (response.status == "404"){
+        renderErrorHTML(client);
+        return -1;
+    }
+    else{
+        int body_len = strlen(response.body);
+        char Response[512];
+        snprintf(Response, sizeof(Response),
+            "%s %s %s\r\n"
+            "Content-Type: %s\r\n"
+            "Content-Length: %d\r\n"
+            "Date: %s\r\n"
+            "Connection: %s\r\n"
+            "\r\n"
+            "%s", response.version,response.status,response.phrase, 
+            response.headers.Content_Type,body_len,response.headers.Date,
+            response.headers.Connection, response.body);
+        send(client.fd, Response, strlen(Response), 0);
+        free(response.body);
+        close(client.fd);
+        return 0;
+
+    }
+}
+int renderCSS(char* path, Client client){
+    Response response = createResponse(path,"text/css", "200");
+    if (response.status == "404"){
+        renderErrorHTML(client);
+        return -1;
+    }
+    else{
+        int body_len = strlen(response.body);
+        char Response[512];
+        snprintf(Response, sizeof(Response),
+            "%s %s %s\r\n"
+            "Content-Type: %s\r\n"
+            "Content-Length: %d\r\n"
+            "Date: %s\r\n"
+            "Connection: %s\r\n"
+            "\r\n"
+            "%s", response.version,response.status,response.phrase, 
+            response.headers.Content_Type,body_len,response.headers.Date,
+            response.headers.Connection, response.body);
+        send(client.fd, Response, strlen(Response), 0);
+        free(response.body);
+        close(client.fd);
+        return 0;
+
+    }
 }
 #endif

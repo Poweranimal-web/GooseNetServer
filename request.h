@@ -16,6 +16,7 @@ typedef struct response_headers{
     char* User_Agent;
     char* Authorization;
     char* Cookie;
+    char* Sec_Fetch_Dest;
 } Header;
 typedef struct request
 {
@@ -37,6 +38,7 @@ enum HeaderType {
     USER_AGENT,
     AUTHORIZATION,
     COOKIE,
+    SEC_FETCH_DEST,
     UNKNOWN
 };
 Request parseRequest(char* request);
@@ -49,7 +51,6 @@ Request parseRequest(char* request){
     Request req = {0};
     char bufferHeader[MAX_HEADER_NAME_SIZE];
     char bufferValue[MAX_HEADER_VALUE_SIZE];
-    int i = 0;
     int indexValue = 0;
     int indexHeader = 0;
     int value = 0;
@@ -74,19 +75,18 @@ Request parseRequest(char* request){
         if (first == 1){
             parseRequestLine(request,0,&req);
         }
-        if (*(request+i) == '\r' && *(request+i+1) == '\n'){
+        if (*(request+1) == '\r' && *(request+2) == '\n'){
             bufferHeader[indexHeader] = '\0';
             bufferValue[indexValue] = '\0';
             parseField(bufferHeader,  bufferValue, &req);
             indexHeader = 0;
             indexValue = 0;
             value = 0;
-            i=0;
             if (first == 1){
                 parseRequestLine(request,1,&req);
                 first = 0;
             }
-            request++;
+            request+=2;
         }
         request++;
 
@@ -161,6 +161,9 @@ enum HeaderType parseHeader(char* header){
     else if(strcmp(header, "Cookie") == 0){
         return COOKIE;
     }
+    else if(strcmp(header, "Sec-Fetch-Dest") == 0){
+        return SEC_FETCH_DEST;
+    }
     else{
         return UNKNOWN;
     }
@@ -208,6 +211,9 @@ void parseField(char* header, char* value, Request* request){
         case COOKIE:
             request->headers.Cookie = strdup(value);
             break;
+        case SEC_FETCH_DEST:
+            request->headers.Sec_Fetch_Dest = strdup(value);
+            break;
         default:
             break;
     }
@@ -245,6 +251,9 @@ void freeRequest(Request* req){
     }
     if (req->headers.Cookie != NULL){
         free(req->headers.Cookie);
+    }
+    if (req->headers.Sec_Fetch_Dest != NULL){
+        free(req->headers.Sec_Fetch_Dest);
     }
 }
 #endif

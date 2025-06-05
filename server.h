@@ -30,7 +30,7 @@ void startListing(Server object){
         socketInfo.sin_addr.s_addr = socketInfo.sin_addr.s_addr;
         int bind_status = bind(sock, (struct sockaddr*)&socketInfo, sizeof(socketInfo));
         printf("Error, %s",strerror(errno)); 
-        int listen_status = listen(sock,20);
+        int listen_status = listen(sock,10000);
         printf("Status bind: %d, Status listen: %d\n",bind_status, listen_status);
         printf("Server started listing on %s:%d \n", object.host, object.port);
         while (1)
@@ -40,12 +40,10 @@ void startListing(Server object){
             buffer[length] = '\0';
             if (length > 0){
                 Request request = parseRequest(buffer);
-                Client Client;
-                Client.fd = client;
+                Client Client = getClient(client);
                 LinearSearchRoute(request.path, request, Client);
                 freeRequest(&request);
             }
-            close(client);
         }
     }
 }
