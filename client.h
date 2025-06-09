@@ -11,7 +11,7 @@ typedef struct client
     Address address;
     int fd;
 } Client;
-Client getClient(int fd){
+Client getClient(int fd){ // get address of client socket and put it in Client struct
     struct sockaddr_in addr;
     socklen_t addr_size = sizeof(struct sockaddr_in);
     int res = getpeername(fd, (struct sockaddr *)&addr, &addr_size);

@@ -23,6 +23,7 @@ typedef struct request
   char method[10];
   char path[4096];
   char version[15];
+  char* body;
   Header headers;  
 } Request;
 enum HeaderType {
@@ -47,7 +48,7 @@ enum HeaderType parseHeader(char* header);
 void freeRequest(Request* req);
 void parseRequestLine(char* ch,int done, Request* request);
 
-Request parseRequest(char* request){
+Request parseRequest(char* request){ // parser of income requestes
     Request req = {0};
     char bufferHeader[MAX_HEADER_NAME_SIZE];
     char bufferValue[MAX_HEADER_VALUE_SIZE];
@@ -55,23 +56,32 @@ Request parseRequest(char* request){
     int indexHeader = 0;
     int value = 0;
     int first = 1;
+    int body = 0;
     while (1)
     {   
         if (*request == '\0'){
+            if (indexValue > 0){ // check if body exist, then copy it.
+                bufferValue[indexValue] = '\0';
+                req.body = strdup(bufferValue);
+            }
             break;
         }
-        else if (*request == ':' && value == 0)
+        else if (*request == ':' && value == 0)  // check if it cross :
         {
             value = 1;
             request+=2;
         }
-        if (value == 0 && first != 1){ // check if it cross :
+        if (*(request) == '\r' && *(request+1) == '\n'){
+            value = 1;
+            request += 2;
+            continue;
+        }
+        if (value == 0 && first != 1){
             bufferHeader[indexHeader++] = *request;
         }
         else if(value == 1){
             bufferValue[indexValue++] = *request;
         }
-
         if (first == 1){
             parseRequestLine(request,0,&req);
         }
@@ -254,6 +264,9 @@ void freeRequest(Request* req){
     }
     if (req->headers.Sec_Fetch_Dest != NULL){
         free(req->headers.Sec_Fetch_Dest);
+    }
+    if (req->body != NULL){
+        free(req->body);
     }
 }
 #endif

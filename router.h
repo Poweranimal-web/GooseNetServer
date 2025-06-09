@@ -8,20 +8,12 @@
 #define RESULTPATH(client_path, founded_path) \
 founded_path != NULL ? strcmp(founded_path, client_path) : -1 // method  for comparing address was requested by client and founded path, if founded_path is null return -1
 int RESULT_TYPE_MESSAGE(char* typeRequest, char* type) {
-    // printf("%s\n", typeRequest);
-    // printf("%d\n", typeRequest != NULL ? strcmp(typeRequest, type) : -1);
     return typeRequest != NULL ? strcmp(typeRequest, type) : -1;
 }
-enum Method{
-    GET,
-    POST,
-    PUT,
-    DELETE
-};
 typedef struct route
 {
     char* path;
-    enum Method method;
+    char* method;
     void (*handler)(Request request, Client client);
 } Route;
 typedef struct state
@@ -33,6 +25,9 @@ Route* ArrayRoutes; // storing routes that consisting of (path, method, handler)
 StateArray stateRoute; // storing state of ArrayRoutes 
 int Init = 0;
 void MapGet(char* path, void (*handler)(Request request, Client client)); // append GET request handler to ArrayRoutes
+void MapPost(char* path, void (*handler)(Request request, Client client)); // append POST request handler to ArrayRoutes
+void MapDelete(char* path, void (*handler)(Request request, Client client)); // append DELETE request handler to ArrayRoutes
+void MapPut(char* path, void (*handler)(Request request, Client client)); // append PUT request handler to ArrayRoutes
 int InitiliazeStateRoute(); // create properties for StateArray to start enumate ArrayRoutes
 int InitiliazeStateRoute(){
     ArrayRoutes = (Route*)(malloc(sizeof(Route)*4));;
@@ -55,10 +50,29 @@ void MapGet(char* path, void (*handler)(Request request, Client client)){
     Route route;
     route.path = path;
     route.handler = handler;
-    route.method = GET;
+    route.method = "GET";
+    ArrayRoutes[stateRoute.index++] = route;
+}
+void MapPost(char* path, void (*handler)(Request request, Client client)){
+    if (Init == 0){
+        InitiliazeStateRoute();
+        Init = 1;
+    }
+    if (stateRoute.index >= stateRoute.last){
+        stateRoute.last = stateRoute.index + 1;
+        ArrayRoutes = (Route*)realloc(ArrayRoutes, sizeof(Route)*(stateRoute.last));
+        if (ArrayRoutes == NULL) {
+            fprintf(stderr, "Memory reallocation failed\n");
+        }
+    }
+    Route route;
+    route.path = path;
+    route.handler = handler;
+    route.method = "POST";
     ArrayRoutes[stateRoute.index++] = route;
 }
 void LinearSearchRoute(char* path, Request request, Client client){ 
+    // Check type of message for properly loading content
     if (RESULT_TYPE_MESSAGE(request.headers.Sec_Fetch_Dest, "script") == 0){
         renderJS(path,client);
     }
@@ -69,7 +83,9 @@ void LinearSearchRoute(char* path, Request request, Client client){
         for (int i = 0; i < stateRoute.last; i++)
         {
             int resultSearch = RESULTPATH(path, ArrayRoutes[i].path);
-            if (resultSearch == 0){
+            // printf("Works\n");
+            // printf("Path: %s, %s -- Result search: %d, method: %s\n", ArrayRoutes[i].path, path, resultSearch, ArrayRoutes[i].method);
+            if (resultSearch == 0 && strcmp(ArrayRoutes[i].method, request.method) == 0){
                 ArrayRoutes[i].handler(request,client);
                 return;
             }

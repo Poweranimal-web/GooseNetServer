@@ -28,7 +28,7 @@ typedef struct response
     char* body;
     HeaderResponse headers;
 } Response;
-char weekDays[7][4] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+char weekDays[7][4] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}; // array for date in response
 char* returnPhrase(char* status){
     if (strcmp(status, "100") == 0){
         return "Continue";
@@ -168,16 +168,17 @@ char* readHtml(char* path){
     fseek(file, 0, SEEK_END);
     long size = ftell(file);
     fseek(file, 0, SEEK_SET);
-    char* html = (char*)(malloc(sizeof(char)* size));
+    char* html = (char*)(malloc(sizeof(char)* size+1));
     int ch = fgetc(file);
     while (ch != EOF){
         html[i++]= (char)ch;
         ch = fgetc(file);
     }
+    html[i]= '\0';
     fclose(file);
     return html;
 }
-char* readfile(char* path){
+char* readfile(char* path){ // read some static files
     FILE* file;
     int i = 0;
     char fullpath[50] = "./html";
@@ -187,12 +188,13 @@ char* readfile(char* path){
         fseek(file, 0, SEEK_END);
         long size = ftell(file);
         fseek(file, 0, SEEK_SET);
-        char* fileCustom = (char*)(malloc(sizeof(char)* size));
+        char* fileCustom = (char*)(malloc(sizeof(char)* size+1));
         int ch = fgetc(file);
         while (ch != EOF){
             fileCustom[i++]= (char)ch;
             ch = fgetc(file);
         }
+        fileCustom[i]= '\0';
         fclose(file);
         return fileCustom;
     }
@@ -201,7 +203,7 @@ char* readfile(char* path){
     }
 
 }
-Response createHTMLResponse(char* path, char* status){
+Response createHTMLResponse(char* path, char* status){ // create instance of response
     Response response;
     response.status = status;
     response.phrase = returnPhrase(response.status);
@@ -216,7 +218,7 @@ Response createHTMLResponse(char* path, char* status){
     weekDays[tm.tm_wday],tm.tm_mday,tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
     return response;
 }
-Response createResponse(char* path,char* type,char* status){
+Response createResponse(char* path,char* type,char* status){ // Create custom entity of response
     Response response;
     response.version = "HTTP/1.1";;
     char* bodyResult = readfile(path);
@@ -241,8 +243,7 @@ Response createResponse(char* path,char* type,char* status){
 
 int renderHTML(char* path_html, Client client){
     Response response = createHTMLResponse(path_html, "200");
-    int body_len = strlen(response.body);
-    char Response[512];
+    char Response[4000];
     snprintf(Response, sizeof(Response),
         "%s %s %s\r\n"
         "Content-Type: %s\r\n"
@@ -251,7 +252,7 @@ int renderHTML(char* path_html, Client client){
         "Connection: %s\r\n"
         "\r\n"
         "%s", response.version,response.status,response.phrase, 
-        response.headers.Content_Type,body_len,response.headers.Date,
+        response.headers.Content_Type,response.headers.Content_Length,response.headers.Date,
         response.headers.Connection, response.body);
     send(client.fd, Response, strlen(Response), 0);
     free(response.body);
@@ -260,8 +261,7 @@ int renderHTML(char* path_html, Client client){
 }
 int renderErrorHTML(Client client){
     Response response = createHTMLResponse("./html/error.html", "404");
-    int body_len = strlen(response.body);
-    char Response[512];
+    char Response[4000];
     snprintf(Response, sizeof(Response),
         "%s %s %s\r\n"
         "Content-Type: %s\r\n"
@@ -270,14 +270,14 @@ int renderErrorHTML(Client client){
         "Connection: %s\r\n"
         "\r\n"
         "%s", response.version,response.status,response.phrase, 
-        response.headers.Content_Type,body_len,response.headers.Date,
+        response.headers.Content_Type,response.headers.Content_Length,response.headers.Date,
         response.headers.Connection, response.body);
     send(client.fd, Response, strlen(Response), 0);
     free(response.body);
     close(client.fd);
     return 0;
 }
-int renderJS(char* path, Client client){
+int renderJS(char* path, Client client){ // send js file
     Response response = createResponse(path,"text/javascript", "200");
     if (response.status == "404"){
         renderErrorHTML(client);
@@ -285,7 +285,7 @@ int renderJS(char* path, Client client){
     }
     else{
         int body_len = strlen(response.body);
-        char Response[512];
+        char Response[4000];
         snprintf(Response, sizeof(Response),
             "%s %s %s\r\n"
             "Content-Type: %s\r\n"
@@ -303,7 +303,7 @@ int renderJS(char* path, Client client){
 
     }
 }
-int renderCSS(char* path, Client client){
+int renderCSS(char* path, Client client){ // send css file
     Response response = createResponse(path,"text/css", "200");
     if (response.status == "404"){
         renderErrorHTML(client);
