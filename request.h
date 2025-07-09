@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+#include "../HashTable/hash.h"
 #ifndef REQUEST
 #define REQUEST
 #define MAX_HEADER_NAME_SIZE 64
@@ -24,6 +26,8 @@ typedef struct request
   char path[4096];
   char version[15];
   char* body;
+  char paramsString[10000];
+  Dictionary* parametrs;
   Header headers;  
 } Request;
 enum HeaderType {
@@ -47,7 +51,7 @@ void parseField(char* header, char* value, Request* request);
 enum HeaderType parseHeader(char* header);
 void freeRequest(Request* req);
 void parseRequestLine(char* ch,int done, Request* request);
-
+void extractParams(Request* request); // extract parametrs from path like ?name="Nikita"
 Request parseRequest(char* request){ // parser of income requestes
     Request req = {0};
     char bufferHeader[MAX_HEADER_NAME_SIZE];
@@ -94,6 +98,7 @@ Request parseRequest(char* request){ // parser of income requestes
             value = 0;
             if (first == 1){
                 parseRequestLine(request,1,&req);
+                extractParams(&req);
                 first = 0;
             }
             request+=2;
@@ -104,9 +109,94 @@ Request parseRequest(char* request){ // parser of income requestes
     return req;
     
 }
+void extractParams(Request* request){ /* method for exracting params in url path. 
+    For instance: http://localhost:3000/api/search?location=wherever&duration=123, then param is location=wherever */
+    char* path = &request->paramsString[0];
+    if (strlen(path) <= 0){
+        return;
+    }
+    request->parametrs = HashTable();
+    // variable that indicate state which part of pair is it: key or value; For instance if value is currnect then i will get key=0 and value=1:
+    int key = 0; 
+    int value = 0;
+    // count length of value and key below:
+    int lengthKey = 0; 
+    int lengthValue = 0;
+    int indexEnum = 0;
+    // buffer for storing value
+    char* keyBuffer = (char*)(malloc(sizeof(char)*1000));
+    char* valueBuffer = (char*)(malloc(sizeof(char)*1000));
+    while (1)
+    {
+        if (*path == '\0'){ // if end of parametrs then clean memmory and complete action
+            if (lengthKey < 1000){
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue);
+            }
+            keyBuffer[lengthKey] = '\0';
+            valueBuffer[lengthValue] = '\0';
+            // printf("Values: %s:%s\n",keyBuffer,valueBuffer);
+            Insert(request->parametrs,keyBuffer,valueBuffer, "string");
+            free(keyBuffer);
+            free(valueBuffer);
+            break;
+        }
+        if (*path == '?' && key != 1){
+            key = 1;
+            path++;
+            continue;                        
+        }
+        else if (*path == '='  && value != 1){
+            key = 0;
+            value = 1;
+            path++;
+            indexEnum = 0;
+            continue; 
+        }
+        else if (*path == '&'){ // add key&value pair in hash, and resize length of value pair, if length less than 1000 bytes
+            key = 1;
+            value = 0;
+            indexEnum = 0;
+            if (lengthKey < 1000){ // if size less 1000, than i will change size 
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue);
+            }
+            // printf("Lenght: %d\n",lengthKey);
+            keyBuffer[lengthKey] = '\0';
+            valueBuffer[lengthValue] = '\0';
+            Insert(request->parametrs,keyBuffer,valueBuffer, "string");
+            keyBuffer = (char*)(malloc(sizeof(char)*1000)); // dedicate new part of memmory for comming params
+            valueBuffer = (char*)(malloc(sizeof(char)*1000));
+            path++;
+            lengthKey = 0;
+            lengthValue = 0;
+            continue;
+        }
+        if (key == 1){
+            lengthKey++;
+            keyBuffer[indexEnum++] = *path;
+            if (lengthKey > 1000){
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey+1);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue+1);
+            }
+
+        }
+        if(value == 1){
+            lengthValue++;
+            valueBuffer[indexEnum++] = *path;
+            if (lengthKey > 1000){
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey+1);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue+1);
+            }
+        }
+        path++;
+    }
+    
+}
 void parseRequestLine(char* ch,int done, Request* request){
     static int index = 0;
     static int i = 0;
+    static int params = 0; // check if path consisted a parameters
     if (done == 1){
         index = 0;
         i = 0;
@@ -119,12 +209,35 @@ void parseRequestLine(char* ch,int done, Request* request){
     }
     if (index == 0){
         request->method[i++] = *ch; 
+        if (*(ch+1) == ' '){
+            request->method[i] = '\0';
+        }
     }
     else if (index == 1){
         request->path[i++] = *ch;
+        if (*(ch+1) == ' '){
+            request->path[i] = '\0';
+        }
+        else if(*(ch+1) == '?'){
+            request->path[i] = '\0';
+            index += 1;
+            i = 0;
+            params = 1;
+            return;
+        }
+    }
+    else if (index == 2 && params == 1){
+        request->paramsString[i++] = *ch;
+        if (*(ch+1) == ' '){
+            request->paramsString[i] = '\0';
+            params = 0;
+        }
     }
     else{
         request->version[i++] = *ch;
+        if (*(ch+1) == ' '){
+            request->version[i] = '\0';
+        }
     }
 }
 enum HeaderType parseHeader(char* header){
@@ -267,6 +380,9 @@ void freeRequest(Request* req){
     }
     if (req->body != NULL){
         free(req->body);
+    }
+    if (req->parametrs != NULL){
+        free(req->parametrs);
     }
 }
 #endif

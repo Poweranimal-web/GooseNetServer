@@ -38,7 +38,7 @@ void startListing(Server object){
             int client = accept(sock, (struct sockaddr*)NULL, NULL);
             int length = recv(client, buffer, sizeof(buffer)-1, 0);
             buffer[length] = '\0';
-            if (length > 0){
+            if (length > 0){ 
                 Request request = parseRequest(buffer);
                 Client Client = getClient(client);
                 LinearSearchRoute(request.path, request, Client);

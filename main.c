@@ -10,15 +10,18 @@ void handler3(Request request, Client client){
     renderHTML("./html/page.html", client);
 }
 void handler4(Request request, Client client){
-    printf("Body: %s\n", request.body);
-    printf("Body: %s\n", request.headers.Cookie);
+    printf("This password: %s\n", (char*)Get(request.parametrs,"password"));
+    printf("This nickname: %s\n", (char*)Get(request.parametrs,"nickname"));
+    printf("This id: %s\n", (char*)Get(request.parametrs,"id"));
+    printf("This page: %s\n", (char*)Get(request.parametrs,"page"));
+    renderHTML("./html/page.html", client);
 }
-
+// i need to fix data clearing in hashtable  
 int main(){
     MapGet("/", handler);
     MapGet("/love", handler2);
-    MapGet("/admin", handler3);
-    MapPost("/admin", handler4);
+    // MapGet("/admin", handler3);
+    MapGet("/admin", handler4);
     Server server;
     server.host = "127.0.0.1";
     server.port = 1111;

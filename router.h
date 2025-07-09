@@ -83,8 +83,6 @@ void LinearSearchRoute(char* path, Request request, Client client){
         for (int i = 0; i < stateRoute.last; i++)
         {
             int resultSearch = RESULTPATH(path, ArrayRoutes[i].path);
-            // printf("Works\n");
-            // printf("Path: %s, %s -- Result search: %d, method: %s\n", ArrayRoutes[i].path, path, resultSearch, ArrayRoutes[i].method);
             if (resultSearch == 0 && strcmp(ArrayRoutes[i].method, request.method) == 0){
                 ArrayRoutes[i].handler(request,client);
                 return;
