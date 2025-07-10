@@ -54,6 +54,7 @@ void parseRequestLine(char* ch,int done, Request* request);
 void extractParams(Request* request); // extract parametrs from path like ?name="Nikita"
 Request parseRequest(char* request){ // parser of income requestes
     Request req = {0};
+    req.parametrs = HashTable();
     char bufferHeader[MAX_HEADER_NAME_SIZE];
     char bufferValue[MAX_HEADER_VALUE_SIZE];
     int indexValue = 0;
@@ -115,7 +116,6 @@ void extractParams(Request* request){ /* method for exracting params in url path
     if (strlen(path) <= 0){
         return;
     }
-    request->parametrs = HashTable();
     // variable that indicate state which part of pair is it: key or value; For instance if value is currnect then i will get key=0 and value=1:
     int key = 0; 
     int value = 0;

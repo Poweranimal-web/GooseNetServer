@@ -1,6 +1,7 @@
 #include "server.h"
 #include "response.h"
 void handler(Request request, Client client){
+    printf("Id is %s\n", (char*)Get(request.parametrs,"id"));
     renderHTML("./html/hello.html", client);
 }
 void handler2(Request request, Client client){
