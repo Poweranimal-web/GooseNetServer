@@ -1,21 +1,20 @@
 #include "server.h"
 #include "response.h"
 void handler(Request request, Client client){
-    printf("Id is %s\n", (char*)Get(request.parametrs,"id"));
-    renderHTML("./html/hello.html", client);
+    renderHTML(request,"./html/hello.html", client);
 }
 void handler2(Request request, Client client){
-    renderHTML("./html/love.html", client);
+    renderHTML(request,"./html/love.html", client);
 }
 void handler3(Request request, Client client){
-    renderHTML("./html/page.html", client);
+    renderHTML(request,"./html/page.html", client);
 }
 void handler4(Request request, Client client){
-    printf("This password: %s\n", (char*)Get(request.parametrs,"password"));
-    printf("This nickname: %s\n", (char*)Get(request.parametrs,"nickname"));
-    printf("This id: %s\n", (char*)Get(request.parametrs,"id"));
-    printf("This page: %s\n", (char*)Get(request.parametrs,"page"));
-    renderHTML("./html/page.html", client);
+    printf("This password: %s\n", get_param_string(&request,"password"));
+    printf("This nickname: %s\n", get_param_string(&request,"nickname"));
+    printf("This id: %s\n",  get_param_string(&request,"id"));
+    printf("This page: %s\n",  get_param_string(&request,"page"));
+    renderHTML(request,"./html/page.html", client);
 }
 // i need to fix data clearing in hashtable  
 int main(){

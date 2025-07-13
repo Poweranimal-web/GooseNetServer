@@ -4,6 +4,7 @@
 #include <time.h>
 #include <sys/socket.h>
 #include "client.h"
+#include "../HashTable/hash.h"
 #ifndef RESPONSE
 #define RESPONSE
 typedef struct headers{
@@ -160,6 +161,53 @@ char* returnPhrase(char* status){
         return "Uknown";
     }
 }
+// features for controling cookies below
+char* get_cookie_string(Request* request,char* key){
+    return (char*)Get(request->cookies, key);
+}
+void remove_cookie(Request* request,char* key){
+    Insert(request->cookies,key, "; Max-Age=0; Path=/","string");
+}
+void add_cookie_string(Request* request,char* key, char* value){
+    Insert(request->cookies,key, value,"string");
+}
+// method for getting params if it exists
+char* get_param_string(Request* request,char* key){
+    return (char*)Get(request->parametrs,key);
+}
+char* serialize_cookie_hash(Dictionary* table) {
+    if (!table) return NULL;
+
+    size_t capacity = 1024;
+    char* result = malloc(capacity);
+    if (!result) return NULL;
+    result[0] = '\0';
+
+    for (size_t i = 0; i < table->length; ++i) {
+        HashEntry* entry = &table->hashtable[i];
+        while (strcmp(entry->key, "") != 0) {
+            if (entry->key && entry->value) {
+                // Calculate needed space for one Set-Cookie line + newline
+                size_t needed = strlen("Set-Cookie: ") + strlen(entry->key) + 1 + strlen(entry->value) + strlen("\r\n") + 1;
+                size_t current_len = strlen(result);
+                if (current_len + needed >= capacity) {
+                    capacity *= 2;
+                    result = realloc(result, capacity);
+                    if (!result) return NULL;
+                }
+
+                strcat(result, "Set-Cookie: ");
+                strcat(result, entry->key);
+                strcat(result, "=");
+                strcat(result, entry->value);
+                strcat(result, "\r\n");
+            }
+            entry = entry->next_entry;
+        }
+    }
+
+    return result;
+}
 
 char* readHtml(char* path){
     FILE* file;
@@ -241,8 +289,9 @@ Response createResponse(char* path,char* type,char* status){ // Create custom en
     return response;
 }
 
-int renderHTML(char* path_html, Client client){
+int renderHTML(Request request,char* path_html, Client client){
     Response response = createHTMLResponse(path_html, "200");
+    char* cookies = serialize_cookie_hash(request.cookies);
     char Response[4000];
     snprintf(Response, sizeof(Response),
         "%s %s %s\r\n"
@@ -250,12 +299,14 @@ int renderHTML(char* path_html, Client client){
         "Content-Length: %d\r\n"
         "Date: %s\r\n"
         "Connection: %s\r\n"
+        "%s"
         "\r\n"
         "%s", response.version,response.status,response.phrase, 
         response.headers.Content_Type,response.headers.Content_Length,response.headers.Date,
-        response.headers.Connection, response.body);
+        response.headers.Connection,cookies, response.body);
     send(client.fd, Response, strlen(Response), 0);
     free(response.body);
+    free(cookies);
     close(client.fd);
     return 0;
 }

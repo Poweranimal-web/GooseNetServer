@@ -28,6 +28,7 @@ typedef struct request
   char* body;
   char paramsString[10000];
   Dictionary* parametrs;
+  Dictionary* cookies;
   Header headers;  
 } Request;
 enum HeaderType {
@@ -52,9 +53,12 @@ enum HeaderType parseHeader(char* header);
 void freeRequest(Request* req);
 void parseRequestLine(char* ch,int done, Request* request);
 void extractParams(Request* request); // extract parametrs from path like ?name="Nikita"
+void extractCookies(Request* request); // It's moving data from cookie to hash store
 Request parseRequest(char* request){ // parser of income requestes
     Request req = {0};
     req.parametrs = HashTable();
+    req.cookies = HashTable();
+    req.headers.Cookie = "";
     char bufferHeader[MAX_HEADER_NAME_SIZE];
     char bufferValue[MAX_HEADER_VALUE_SIZE];
     int indexValue = 0;
@@ -107,7 +111,82 @@ Request parseRequest(char* request){ // parser of income requestes
         request++;
 
     }
+    if (strlen(req.headers.Cookie) > 0){
+        extractCookies(&req);
+    }
     return req;
+    
+}
+void extractCookies(Request* request){
+    char* cookies = request->headers.Cookie;
+    // count length of value and key below:
+    int lengthKey = 0; 
+    int lengthValue = 0;
+    int indexEnum = 0;
+    // variable that indicate state which part of pair is it: key or value; For instance if value is currnect then i will get key=0 and value=1:
+    int key = 1; 
+    int value = 0;
+    // buffer for storing value
+    char* keyBuffer = (char*)(malloc(sizeof(char)*1000));
+    char* valueBuffer = (char*)(malloc(sizeof(char)*1000));
+    while (1)
+    {
+        if (*cookies == ';'){
+            cookies += 2;
+            value = 0;
+            key = 1;
+            if (lengthKey < 1000){
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue);
+            }
+            keyBuffer[lengthKey] = '\0';
+            valueBuffer[lengthValue] = '\0';
+            indexEnum = 0;
+            lengthKey = 0;
+            lengthValue = 0;
+            Insert(request->cookies,keyBuffer, valueBuffer, "string");
+            keyBuffer = (char*)(malloc(sizeof(char)*1000)); // dedicate new part of memmory for comming params
+            valueBuffer = (char*)(malloc(sizeof(char)*1000));
+            continue;
+        }
+        else if (*cookies == '\0'){
+            if (lengthKey < 1000){
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue);
+            }
+            keyBuffer[lengthKey] = '\0';
+            valueBuffer[lengthValue] = '\0';
+            Insert(request->cookies,keyBuffer, valueBuffer, "string");
+            free(keyBuffer); // free memory in the end of function
+            free(valueBuffer);
+            break;
+        }
+        else if (*cookies == '='){
+            value = 1;
+            key = 0;
+            indexEnum = 0;
+            cookies++;
+            continue;
+        }
+        if (key == 1){
+            lengthKey++;
+            keyBuffer[indexEnum++] = *cookies;
+            if (lengthKey > 1000){
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey+1);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue+1);
+            }
+
+        }
+        if (value == 1){
+            lengthValue++;
+            valueBuffer[indexEnum++] = *cookies;
+            if (lengthKey > 1000){
+                keyBuffer = (char*)realloc(keyBuffer, lengthKey+1);
+                valueBuffer = (char*)realloc(valueBuffer, lengthValue+1);
+            }
+        }
+        cookies++;
+    }
     
 }
 void extractParams(Request* request){ /* method for exracting params in url path. 
@@ -372,9 +451,6 @@ void freeRequest(Request* req){
     if (req->headers.Authorization != NULL){
         free(req->headers.Authorization);
     }
-    if (req->headers.Cookie != NULL){
-        free(req->headers.Cookie);
-    }
     if (req->headers.Sec_Fetch_Dest != NULL){
         free(req->headers.Sec_Fetch_Dest);
     }
@@ -383,6 +459,9 @@ void freeRequest(Request* req){
     }
     if (req->parametrs != NULL){
         free(req->parametrs);
+    }
+    if (req->cookies != NULL){
+        free(req->cookies);
     }
 }
 #endif
