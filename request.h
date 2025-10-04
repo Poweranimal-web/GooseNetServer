@@ -458,9 +458,11 @@ void freeRequest(Request* req){
         free(req->body);
     }
     if (req->parametrs != NULL){
+        free(req->parametrs->hashtable);
         free(req->parametrs);
     }
     if (req->cookies != NULL){
+        free(req->cookies->hashtable);
         free(req->cookies);
     }
 }

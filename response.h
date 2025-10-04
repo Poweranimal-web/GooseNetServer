@@ -213,10 +213,15 @@ char* readHtml(char* path){
     FILE* file;
     int i = 0;
     file = fopen(path, "r");
+    if (file == NULL){
+        printf("Path of file: %s", path);
+        printf("Error, %s\n",strerror(errno)); 
+        return NULL;
+    }
     fseek(file, 0, SEEK_END);
     long size = ftell(file);
     fseek(file, 0, SEEK_SET);
-    char* html = (char*)(malloc(sizeof(char)* size+1));
+    char* html = (char*)(malloc(sizeof(char)* 1000+1));
     int ch = fgetc(file);
     while (ch != EOF){
         html[i++]= (char)ch;

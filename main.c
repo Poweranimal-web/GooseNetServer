@@ -1,3 +1,4 @@
+#define ASYNC
 #include "server.h"
 #include "response.h"
 void handler(Request request, Client client){
@@ -21,7 +22,7 @@ int main(){
     MapGet("/", handler);
     MapGet("/love", handler2);
     // MapGet("/admin", handler3);
-    MapGet("/admin", handler4);
+    MapGet("/admin", handler3);
     Server server;
     server.host = "127.0.0.1";
     server.port = 1111;
