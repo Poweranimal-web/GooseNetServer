@@ -1,6 +1,7 @@
 #define ASYNC
 #include "server.h"
 #include "response.h"
+#include "authefication.h"
 void handler(Request request, Client client){
     renderHTML(request,"./html/hello.html", client);
 }
@@ -8,7 +9,18 @@ void handler2(Request request, Client client){
     renderHTML(request,"./html/love.html", client);
 }
 void handler3(Request request, Client client){
-    renderHTML(request,"./html/page.html", client);
+    if (VerifyTokenBasedAuth(get_cookie_string(&request, "token"))==1){
+        printf("Works!\n");
+        renderHTML(request,"./html/page.html", client);
+    }
+    else{
+        renderErrorHTML(client);
+    }
+}
+void handler5(Request request, Client client){
+    char* token = GenererateTokenBasedAuth(60);
+    add_cookie_string(&request, "token", token);
+    renderHTML(request,"./html/login.html", client);
 }
 void handler4(Request request, Client client){
     printf("This password: %s\n", get_param_string(&request,"password"));
@@ -21,6 +33,7 @@ void handler4(Request request, Client client){
 int main(){
     MapGet("/", handler);
     MapGet("/love", handler2);
+    MapGet("/login", handler5);
     // MapGet("/admin", handler3);
     MapGet("/admin", handler3);
     Server server;
