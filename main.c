@@ -1,4 +1,5 @@
 #define ASYNC
+#include <string.h>
 #include "server.h"
 #include "response.h"
 #include "authefication.h"
@@ -9,8 +10,7 @@ void handler2(Request request, Client client){
     renderHTML(request,"./html/love.html", client);
 }
 void handler3(Request request, Client client){
-    if (VerifyTokenBasedAuth(get_cookie_string(&request, "token"))==1){
-        printf("Works!\n");
+    if (VerifyTokenBasedAuth(request.headers.Authorization)==1){
         renderHTML(request,"./html/page.html", client);
     }
     else{
@@ -18,9 +18,10 @@ void handler3(Request request, Client client){
     }
 }
 void handler5(Request request, Client client){
-    char* token = GenererateTokenBasedAuth(60);
-    add_cookie_string(&request, "token", token);
-    renderHTML(request,"./html/login.html", client);
+    char* token = GenererateTokenBasedAuth(120);
+    char Response[13+strlen(token)];
+    snprintf(Response, sizeof(Response), "{'token':'%s'}",token);
+    returnJson(request,Response,"200", client);
 }
 void handler4(Request request, Client client){
     printf("This password: %s\n", get_param_string(&request,"password"));
@@ -34,7 +35,6 @@ int main(){
     MapGet("/", handler);
     MapGet("/love", handler2);
     MapGet("/login", handler5);
-    // MapGet("/admin", handler3);
     MapGet("/admin", handler3);
     Server server;
     server.host = "127.0.0.1";

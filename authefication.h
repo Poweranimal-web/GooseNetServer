@@ -10,6 +10,11 @@
 #define VER
 Dictionary* keyStorage;
 int epoll_fd;
+typedef struct api_creaditianals{ // entity for parsing auth creaditionals in API authorization.
+
+    char* key;
+    char* value;
+} ApiAuth;
 char tokenSymbols[] = {
    // Uppercase letters
   'A','B','C','D','E','F','G','H','I','J','K','L','M',
@@ -24,11 +29,11 @@ char tokenSymbols[] = {
 
   // Special characters
   '!','@','#','$','%','^','&','*','(',')',
-  '-','_','=','+','[',']','{','}','|',';',
-  ':',',','.','<','>','?','/','`','~'
+  '-','_','=','+','[',']','{','}',';',
+  ',','.','<','>','?','/','~'
 };
 char* GenererateTokenBasedAuth(int timeout);
-int VerifyTokenBasedAuth(char* id);
+int VerifyTokenBasedAuth(char* key);
 void* start_loop();
 int add_timer(int epollfd,int fd){
     struct epoll_event ev;
@@ -74,7 +79,7 @@ char* GenererateTokenBasedAuth(int timeout){
             token[i] = '\0';
             break;
         }
-        int index = rand() % (91 + 1);
+        int index = rand() % (88 + 1);
         token[i] = tokenSymbols[index];
     }
     struct itimerspec settings;
@@ -82,16 +87,62 @@ char* GenererateTokenBasedAuth(int timeout){
     int fd_timer = timerfd_create(CLOCK_REALTIME,TFD_NONBLOCK);
     timerfd_settime(fd_timer,CLOCK_REALTIME,&settings,NULL);
     add_timer(epoll_fd,fd_timer);
-    char* key = (char*)malloc(sizeof(char)*4);
+    char* key = (char*)malloc(sizeof(char)*100);
+    char* result = (char*)malloc(sizeof(char)*100);
     sprintf(key,"%d\0",fd_timer);
     Insert(keyStorage, key,token,"string");
-    return key;
+    sprintf(result,"%s:%s\0",key, token);
+    return result;
 }
-int VerifyTokenBasedAuth(char* id){
-    if (id != NULL){
-        char* result = (char*)Get(keyStorage,id);
-        if (result != NULL){
-            return 1;
+ApiAuth parseAPIkey(char* value){
+    int key = 1;
+    ApiAuth data = {0};
+    printf("%s\n",value);
+    int length_data = strlen(value);
+    int current_length = 0;
+    data.key = (char*)malloc(sizeof(char)*100);
+    data.value = (char*)malloc(sizeof(char)*KEYLENGTH);
+    char* key_ptr = data.key;
+    char* value_ptr = data.value;
+    while (current_length < length_data)
+    {
+        if (*value == ':'){
+            key = 0;
+            key_ptr = '\0';
+            current_length++;
+            value++;
+            continue;
+        }
+        if (key == 1){
+            *key_ptr = *value;
+            key_ptr++;
+        }
+        else{
+            *value_ptr = *value;
+            value_ptr++;
+        }
+        current_length++;
+        value++;
+    }
+    return data;
+    
+}
+int VerifyTokenBasedAuth(char* key){
+    if (key != NULL){
+        ApiAuth cread = parseAPIkey(key);
+        if (strlen(cread.key) > 0){
+            char* result = (char*)Get(keyStorage,cread.key);
+            if (result != NULL){
+                if (strcmp(result,cread.value) == 0){
+                    return 1;
+                }
+                else{
+                    return 0;
+                }
+            }
+            else{
+                return 0;
+            }
         }
         else{
             return 0;
@@ -100,6 +151,7 @@ int VerifyTokenBasedAuth(char* id){
     else{
         return 0;
     }
+    
 }
 #endif
 

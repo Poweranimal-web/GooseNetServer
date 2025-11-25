@@ -146,7 +146,6 @@ void startListing(Server object){
             printf("Error, %s\n",strerror(errno)); 
             exit(EXIT_FAILURE);
         }
-        printf("Works\n");
         for (int i = 0; i < lenght_ready_events; i++) // here is handling data
         {
             if (events.array[i].data.fd == sock){

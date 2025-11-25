@@ -271,6 +271,22 @@ Response createHTMLResponse(char* path, char* status){ // create instance of res
     weekDays[tm.tm_wday],tm.tm_mday,tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
     return response;
 }
+Response createJsonResponse(char* data, char* status){ // create instance of response
+    Response response;
+    response.status = status;
+    response.phrase = returnPhrase(response.status);
+    response.version = "HTTP/1.1";
+    response.body = strdup(data);
+    printf("Body: %s\n", data);
+    response.headers.Content_Type = "application/json";
+    response.headers.Content_Length = strlen(data);
+    response.headers.Connection = "close";
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    sprintf(response.headers.Date,  "%s, %02d %02d %4d %02d:%02d:%02d GMT" ,
+    weekDays[tm.tm_wday],tm.tm_mday,tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    return response;
+}
 Response createResponse(char* path,char* type,char* status){ // Create custom entity of response
     Response response;
     response.version = "HTTP/1.1";;
@@ -384,5 +400,26 @@ int renderCSS(char* path, Client client){ // send css file
         return 0;
 
     }
+}
+int returnJson(Request request,char* data, char* status, Client client){
+    Response response = createJsonResponse(data, status);
+    char* cookies = serialize_cookie_hash(request.cookies);
+    char Response[4000+strlen(data)];
+    snprintf(Response, sizeof(Response),
+        "%s %s %s\r\n"
+        "Content-Type: %s\r\n"
+        "Content-Length: %d\r\n"
+        "Date: %s\r\n"
+        "Connection: %s\r\n"
+        "%s"
+        "\r\n"
+        "%s", response.version,response.status,response.phrase, 
+        response.headers.Content_Type,response.headers.Content_Length,response.headers.Date,
+        response.headers.Connection,cookies, response.body);
+    send(client.fd, Response, strlen(Response), 0);
+    free(response.body);
+    free(cookies);
+    close(client.fd);
+    return 0;
 }
 #endif
