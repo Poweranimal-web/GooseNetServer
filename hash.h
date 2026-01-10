@@ -13,18 +13,22 @@ typedef struct hash_entry
     char* type_value;
     struct hash_entry* next_entry;
 } HashEntry;
+
 typedef struct dictionary
 {
-    int length;
+    int length; // length of hash table
+    int count; // counter for get length of items in hash table
+    float load_factor;
     HashEntry* hashtable;
 } Dictionary;
 void Insert(Dictionary* dictionary,char* key,void* value,char* type_value);
 void Remove(Dictionary* dictionary,char* key);
-Dictionary* HashTable();
+Dictionary* HashTable(int length);
 
-Dictionary* HashTable(){
+Dictionary* HashTable(int length){
     Dictionary* dictionary = (Dictionary*)malloc(sizeof(Dictionary));
-    dictionary->length = 8;
+    dictionary->length = length;
+    dictionary->count = 0;
     HashEntry* hashtable = (HashEntry*)malloc(sizeof(HashEntry)*8);
     for (int i = 0; i < dictionary->length ; i++)
     {
@@ -45,11 +49,67 @@ unsigned long hash(unsigned char *str)
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     return hash;
 }
+void rehashing(Dictionary* dictionary){
+    int new_length = dictionary->length * 2;
+    HashEntry* hashtable = (HashEntry*)malloc(sizeof(HashEntry)*new_length);
+    for (int i = 0; i < new_length; i++)
+    {
+        hashtable[i].key = "";
+        hashtable[i].value = "";
+        hashtable[i].type_value = "";
+        hashtable[i].next_entry = (HashEntry*)malloc(sizeof(HashEntry));
+        hashtable[i].next_entry->key = "";
+    }
+    for (int i = 0; i < dictionary->length; i++)
+    {   
+        HashEntry* imediated_record = &dictionary->hashtable[i];
+        while(1)
+        {
+            if (strcmp(imediated_record->key,"") != 0){
+                    unsigned long hash_key = hash((unsigned char*)imediated_record->key);
+                    unsigned long index = hash_key % new_length;
+                    if (strcmp(hashtable[index].key, "") != 0){
+                        HashEntry* imediated_record2 = &hashtable[index]; // imidiate variable for linked list if colliason still exists
+                        while (1)
+                        {
+                            if (strcmp(imediated_record2->key, "") == 0){
+                                imediated_record2->key = strdup(imediated_record->key);
+                                imediated_record2->value  = strdup(imediated_record->value);
+                                imediated_record2->type_value = strdup(imediated_record->type_value);
+                                imediated_record2->next_entry = (HashEntry*)malloc(sizeof(HashEntry));
+                                imediated_record2->next_entry->key = "";
+                                break;
+                            }
+                            imediated_record2 = imediated_record2->next_entry;
+                        }
+                        
+                    }
+                    else
+                    {
+                        hashtable[index].key = strdup(imediated_record->key);
+                        hashtable[index].value = strdup(imediated_record->value);
+                        hashtable[index].type_value = strdup(imediated_record->type_value);
+                        hashtable[index].next_entry = (HashEntry*)malloc(sizeof(HashEntry));
+                        hashtable[index].next_entry->key = "";
+                    }
+                                    
+            }
+            else{
+                break;
+            }
+            imediated_record = imediated_record->next_entry;
+
+        }
+    }
+    free(dictionary->hashtable);
+    dictionary->hashtable = hashtable;
+    dictionary->length = new_length;
+}
 void Insert(Dictionary* dictionary,char* key,void* value,char* type_value){ 
     unsigned long hash_key = hash((unsigned char*)key);
     unsigned long index = hash_key % dictionary->length;
-    // printf("Record: %s:%d\n", key, index);
-    if (strcmp(dictionary->hashtable[index].key, "") != 0){
+    printf("Record: %s:%d\n", key, index);
+    if (strcmp(dictionary->hashtable[index].key, "") != 0){ 
         HashEntry* imediated_record = &dictionary->hashtable[index];
         while (1){
             if (strcmp(imediated_record->key, "") == 0){
@@ -76,6 +136,12 @@ void Insert(Dictionary* dictionary,char* key,void* value,char* type_value){
         dictionary->hashtable[index].next_entry = (HashEntry*)malloc(sizeof(HashEntry));
         dictionary->hashtable[index].next_entry->key = "";
     }
+    dictionary->count++;
+    dictionary->load_factor = ((float)dictionary->count)/((float)dictionary->length);
+    if (dictionary->load_factor > 1.0){
+        printf("Need rehashing\n");
+        rehashing(dictionary);
+    }
 }
 void* Get(Dictionary* dictionary, char* key){
     unsigned long hash_key = hash((unsigned char*)key);
@@ -84,16 +150,16 @@ void* Get(Dictionary* dictionary, char* key){
         return dictionary->hashtable[index].value;
     }
     else{
-        HashEntry* imediated_record = dictionary->hashtable[index].next_entry;
-        while (dictionary->hashtable[index].key != NULL && COMPARE(imediated_record->key,"") != 0)
-        {
-            if (COMPARE(imediated_record->key,key) == 0){
-                return imediated_record->value;
+        if (dictionary->hashtable[index].key != ""){
+            HashEntry* imediated_record = dictionary->hashtable[index].next_entry;
+            while (COMPARE(imediated_record->key,"") != 0){
+                if (COMPARE(imediated_record->key,key) == 0){
+                    return imediated_record->value;
+                }
+                imediated_record = imediated_record->next_entry;
             }
-            imediated_record = imediated_record->next_entry;
-            
         }
-        return NULL;
+        return "";
     }
 }
 void Remove(Dictionary* dictionary,char* key){
@@ -102,9 +168,12 @@ void Remove(Dictionary* dictionary,char* key){
     if (COMPARE(dictionary->hashtable[index].key,key) != 0){
         HashEntry* current_record = &dictionary->hashtable[index];
         HashEntry* next_record = current_record->next_entry;
-        int remove = 0;
+        int remove = 0; // state for indicating element which it will being removed
         while (1)
         {
+            if (strcmp(current_record->key,"") == 0){ // if nothing is got
+                break;
+            }
             if (COMPARE(current_record->key,key) == 0 && remove == 0){
                 remove = 1;
                 continue;
@@ -116,7 +185,6 @@ void Remove(Dictionary* dictionary,char* key){
             }
             if (strcmp(next_record->key,"") == 0 && remove == 1){
                 current_record->key = "";
-                free(next_record);
                 break;
             }
             if (strcmp(next_record->key,"") != 0 && remove == 1){
@@ -151,6 +219,7 @@ void Remove(Dictionary* dictionary,char* key){
         }
         
     }
+    dictionary->count--;
 }
 #endif
 
