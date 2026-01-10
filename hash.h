@@ -13,6 +13,11 @@ typedef struct hash_entry
     char* type_value;
     struct hash_entry* next_entry;
 } HashEntry;
+typedef struct record
+{
+    char* key;
+    void* value;
+} Record;
 
 typedef struct dictionary
 {
@@ -22,6 +27,7 @@ typedef struct dictionary
     HashEntry* hashtable;
 } Dictionary;
 void Insert(Dictionary* dictionary,char* key,void* value,char* type_value);
+Record* Items();
 void Remove(Dictionary* dictionary,char* key);
 Dictionary* HashTable(int length);
 
@@ -104,6 +110,40 @@ void rehashing(Dictionary* dictionary){
     free(dictionary->hashtable);
     dictionary->hashtable = hashtable;
     dictionary->length = new_length;
+}
+Record* Items(Dictionary* dictionary){ // method for getting all records from hash table
+    Dictionary* dict = dictionary;
+    Record* items = (Record*)malloc(sizeof(Record)*dict->count);
+    int counter = 0;
+    for (int i = 0; i < dict->length; i++)
+    {
+        if (strcmp(dict->hashtable[i].key, "") != 0){
+            HashEntry current_element = dict->hashtable[i];
+            Record element;
+            element.key = current_element.key;
+            element.value = current_element.value;
+            items[counter] = element;
+            counter++;
+            while (1)
+            {
+                current_element = *(current_element.next_entry);
+                if (strcmp(current_element.key, "") != 0){
+                    Record element;
+                    element.key = current_element.key;
+                    element.value = current_element.value;
+                    items[counter] = element;
+                    counter++;
+                }
+                else{
+                    break;
+                }
+            }
+            
+
+        }
+
+    }
+    return items;
 }
 void Insert(Dictionary* dictionary,char* key,void* value,char* type_value){ 
     unsigned long hash_key = hash((unsigned char*)key);
