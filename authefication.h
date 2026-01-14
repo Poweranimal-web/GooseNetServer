@@ -49,7 +49,7 @@ int add_timer(int epollfd,int fd){
     }
 }
 void* start_loop(){
-    keyStorage = HashTable();
+    keyStorage = HashTable(90);
     epoll_fd = epoll_create1(0);
     printf("Loop stared\n");
     struct epoll_event events[10000];
@@ -88,7 +88,7 @@ char* GenererateTokenBasedAuth(int timeout){
     timerfd_settime(fd_timer,CLOCK_REALTIME,&settings,NULL);
     add_timer(epoll_fd,fd_timer);
     char* key = (char*)malloc(sizeof(char)*100);
-    char* result = (char*)malloc(sizeof(char)*100);
+    char* result = (char*)malloc(sizeof(char)*140);
     sprintf(key,"%d\0",fd_timer);
     Insert(keyStorage, key,token,"string");
     sprintf(result,"%s:%s\0",key, token);

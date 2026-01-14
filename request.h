@@ -56,8 +56,8 @@ void extractParams(Request* request); // extract parametrs from path like ?name=
 void extractCookies(Request* request); // It's moving data from cookie to hash store
 Request parseRequest(char* request){ // parser of income requestes
     Request req = {0};
-    req.parametrs = HashTable();
-    req.cookies = HashTable();
+    req.parametrs = HashTable(90);
+    req.cookies = HashTable(90);
     req.headers.Cookie = "";
     char bufferHeader[MAX_HEADER_NAME_SIZE];
     char bufferValue[MAX_HEADER_VALUE_SIZE];

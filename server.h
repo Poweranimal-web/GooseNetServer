@@ -177,6 +177,8 @@ void startListing(Server object){
 }
 #else
 void startListing(Server object){
+    pthread_t thread_token;
+    pthread_create(&thread_token, NULL,start_loop,NULL);
     int sock = socket(AF_INET,SOCK_STREAM,0);
     int true = 1;
     int sockset = setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&true,sizeof(int));
