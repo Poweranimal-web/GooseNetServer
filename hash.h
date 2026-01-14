@@ -148,7 +148,6 @@ Record* Items(Dictionary* dictionary){ // method for getting all records from ha
 void Insert(Dictionary* dictionary,char* key,void* value,char* type_value){ 
     unsigned long hash_key = hash((unsigned char*)key);
     unsigned long index = hash_key % dictionary->length;
-    printf("Record: %s:%d\n", key, index);
     if (strcmp(dictionary->hashtable[index].key, "") != 0){ 
         HashEntry* imediated_record = &dictionary->hashtable[index];
         while (1){
@@ -260,6 +259,30 @@ void Remove(Dictionary* dictionary,char* key){
         
     }
     dictionary->count--;
+}
+char* StringInHashTable(Dictionary* dictionary){
+    Record* hashItems = Items(dictionary);
+    char* json = (char*)malloc(sizeof(char));
+    for (int i = 0; i < dictionary->count; i++)
+    {
+        if (i == 0){
+            char record[strlen(hashItems[i].key)+strlen(hashItems[i].value)+8];
+            snprintf(record, sizeof(record), "{'%s':'%s',",hashItems[i].key,hashItems[i].value);
+            strcat(json, record);
+        }
+        else if (i == dictionary->count-1){
+            char record[strlen(hashItems[i].key)+strlen(hashItems[i].value)+7];
+            snprintf(record, sizeof(record), "'%s':'%s'}",hashItems[i].key,hashItems[i].value);
+            strcat(json, record);
+        }
+        else{
+            char record[strlen(hashItems[i].key)+strlen(hashItems[i].value)+7];
+            snprintf(record, sizeof(record), "'%s':'%s',",hashItems[i].key,hashItems[i].value);
+            strcat(json, record);
+        }
+    }
+    return json;
+
 }
 #endif
 
