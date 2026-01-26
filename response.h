@@ -16,7 +16,7 @@ typedef struct headers{
     int Content_Length;
     char* Content_Type;
     char* User_Agent;
-    char Date[30];
+    char Date[37];
     char* Server;
     char* Set_Cookie;
     char* Last_Modified;
@@ -177,12 +177,10 @@ char* get_param_string(Request* request,char* key){
 }
 char* serialize_cookie_hash(Dictionary* table) {
     if (!table) return NULL;
-
     size_t capacity = 1024;
-    char* result = malloc(capacity);
+    char* result = (char*)malloc(sizeof(char)*capacity);
     if (!result) return NULL;
     result[0] = '\0';
-
     for (size_t i = 0; i < table->length; ++i) {
         HashEntry* entry = &table->hashtable[i];
         while (strcmp(entry->key, "") != 0) {
@@ -276,8 +274,7 @@ Response createJsonResponse(char* data, char* status){ // create instance of res
     response.status = status;
     response.phrase = returnPhrase(response.status);
     response.version = "HTTP/1.1";
-    response.body = strdup(data);
-    printf("Body: %s\n", data);
+    response.body = data;
     response.headers.Content_Type = "application/json";
     response.headers.Content_Length = strlen(data);
     response.headers.Connection = "close";
@@ -377,7 +374,7 @@ int renderJS(char* path, Client client){ // send js file
 }
 int renderCSS(char* path, Client client){ // send css file
     Response response = createResponse(path,"text/css", "200");
-    if (response.status == "404"){
+    if (strcmp(response.status,"404") == 0){
         renderErrorHTML(client);
         return -1;
     }
@@ -402,7 +399,7 @@ int renderCSS(char* path, Client client){ // send css file
     }
 }
 int returnJson(Request request,char* data, char* status, Client client){
-    Response response = createJsonResponse(data, status);
+    Response response = createJsonResponse(data, status);    
     char* cookies = serialize_cookie_hash(request.cookies);
     char Response[4000+strlen(data)];
     snprintf(Response, sizeof(Response),
@@ -417,7 +414,6 @@ int returnJson(Request request,char* data, char* status, Client client){
         response.headers.Content_Type,response.headers.Content_Length,response.headers.Date,
         response.headers.Connection,cookies, response.body);
     send(client.fd, Response, strlen(Response), 0);
-    free(response.body);
     free(cookies);
     close(client.fd);
     return 0;

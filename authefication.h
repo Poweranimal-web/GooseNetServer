@@ -11,7 +11,6 @@
 Dictionary* keyStorage;
 int epoll_fd;
 typedef struct api_creaditianals{ // entity for parsing auth creaditionals in API authorization.
-
     char* key;
     char* value;
 } ApiAuth;
@@ -72,7 +71,7 @@ void* start_loop(){
     }
 }
 char* GenererateTokenBasedAuth(int timeout){
-    char* token = (char*)malloc(sizeof(char)*30);
+    char* token = (char*)malloc(sizeof(char)*KEYLENGTH);
     for (int i = 0; i < KEYLENGTH; i++)
     {
         if (i == KEYLENGTH-1){
@@ -97,7 +96,6 @@ char* GenererateTokenBasedAuth(int timeout){
 ApiAuth parseAPIkey(char* value){
     int key = 1;
     ApiAuth data = {0};
-    printf("%s\n",value);
     int length_data = strlen(value);
     int current_length = 0;
     data.key = (char*)malloc(sizeof(char)*100);
