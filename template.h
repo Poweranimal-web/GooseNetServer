@@ -22,7 +22,6 @@ typedef struct TokenArray
     int length;
 } TokenArray;
 
-
 TokenArray tokenize(char* temp){
     Token* tokens = (Token*)malloc(sizeof(Token)*1000);
     char* content = (char*)malloc(sizeof(char)*10001);
@@ -34,7 +33,7 @@ TokenArray tokenize(char* temp){
     Token* token = (Token*)malloc(sizeof(Token));
     token->Type = TEXT;
     char* temproryText = temp;
-    while (*temproryText != '\0')
+    while (1)
     {
         if (*temproryText == START_STATEMENT && *(temproryText+1) == START_STATEMENT){
             content[length_content+1] = '\0'; 
@@ -120,6 +119,14 @@ TokenArray tokenize(char* temp){
                 token->Type = TEXT;
             }
         }
+        if (*temproryText == '\0'){
+            content[length_content+1] = '\0';
+            char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
+            token->content = copy_content;
+            tokens[id_token] = *token;
+            id_token +=1;
+            break;
+        }
         content[length_content] = *temproryText;
         length_content += 1;
         temproryText++;
@@ -127,8 +134,8 @@ TokenArray tokenize(char* temp){
     tokenEntity.tokens = tokens;
     tokenEntity.length = id_token;
     return tokenEntity;
-
 }
+
 
 
 
