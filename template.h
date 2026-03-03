@@ -27,8 +27,9 @@ TokenArray tokenize(char* temp){
     Token* tokens = (Token*)malloc(sizeof(Token)*1000);
     char* content = (char*)malloc(sizeof(char)*10001);
     int length_content = 0;
-    int id_token = 0;
-    int in_tag = 0;
+    int id_token = 0; // current element in structure
+    int in_tag = 0; // check if we are in tag
+    int detect_tag = 0; // Purporse of this variable is identifying was defined type of tag in case if it is condtion or loop.
     TokenArray tokenEntity;
     Token* token = (Token*)malloc(sizeof(Token));
     token->Type = TEXT;
@@ -89,24 +90,30 @@ TokenArray tokenize(char* temp){
             content = (char*)malloc(sizeof(char)*10001);
             length_content = 0;
             in_tag = 0;
+            detect_tag=0;
             temproryText++;
             temproryText++;
             continue;
         }
-        else if (((*temproryText == 'f' && *(temproryText+1) == 'o' && *(temproryText+2) == 'r') || (*temproryText == ' ' && *(temproryText+1) == 'f' && *(temproryText+2) == 'o' && *(temproryText+3) == 'r' )) && in_tag == 1){ // check if it is loop start with 'for' operator with space or neither
+        else if ((*temproryText == 'f' && *(temproryText+1) == 'o' && *(temproryText+2) == 'r') && in_tag == 1 && detect_tag==0){ // check if it is loop start with 'for' operator with space or neither
             token->Type = LOOP;
+            detect_tag=1;
         }
-        else if (((*temproryText == 'i' && *(temproryText+1) == 'f') || (*temproryText == ' ' && *(temproryText+1) == 'i' && *(temproryText+2) == 'f' )) && in_tag == 1){ // check if it is condtion start with 'if' operator with space or neither
+        else if ((*temproryText == 'i' && *(temproryText+1) == 'f') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
             token->Type = COND;
+            detect_tag=1;
         }
-        else if (((*temproryText == 'e' && *(temproryText+1) == 'l' && *(temproryText+2) == 'i' && *(temproryText+3) == 'f') || (*temproryText == ' ' && *(temproryText+1) == 'e' && *(temproryText+2) == 'l' && *(temproryText+3) == 'i' && *(temproryText+4) == 'f' )) && in_tag == 1){ // check if it is condtion start with 'if' operator with space or neither
+        else if ((*temproryText == 'e' && *(temproryText+1) == 'l' && *(temproryText+2) == 'i' && *(temproryText+3) == 'f') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
             token->Type = COND;
+            detect_tag=1;
         }
-        else if (((*temproryText == 'e' && *(temproryText+1) == 'n' && *(temproryText+2) == 'd' && *(temproryText+3) == 'i' && *(temproryText+4) == 'f') || (*temproryText == ' ' && *(temproryText+1) == 'e' && *(temproryText+2) == 'n' && *(temproryText+3) == 'd' && *(temproryText+4) == 'i' && *(temproryText+5) == 'f')) && in_tag == 1){ // check if it is condtion start with 'if' operator with space or neither
+        else if ((*temproryText == 'e' && *(temproryText+1) == 'n' && *(temproryText+2) == 'd' && *(temproryText+3) == 'i' && *(temproryText+4) == 'f') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
             token->Type = END_COND;
+            detect_tag=1;
         }
-        else if (((*temproryText == 'e' && *(temproryText+1) == 'n' && *(temproryText+2) == 'd' && *(temproryText+3) == 'f' && *(temproryText+4) == 'o' && *(temproryText+5) == 'r') || (*temproryText == ' ' && *(temproryText+1) == 'e' && *(temproryText+2) == 'n' && *(temproryText+3) == 'd' && *(temproryText+4) == 'f' && *(temproryText+5) == 'o' && *(temproryText+6) == 'r')) && in_tag == 1){ // check if it is condtion start with 'if' operator with space or neither
+        else if ((*temproryText == 'e' && *(temproryText+1) == 'n' && *(temproryText+2) == 'd' && *(temproryText+3) == 'f' && *(temproryText+4) == 'o' && *(temproryText+5) == 'r') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
             token->Type = END_LOOP;
+            detect_tag=1;
         }
         else{
             if (in_tag != 1){
