@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include "../HashTable/hash.h"
 #define START_STATEMENT '{'
 #define LOOP_COND '%'
 #define END_STATEMENT '}'
@@ -15,13 +16,22 @@ typedef struct token
 {
     char* content;
     enum type Type;
+    Token* endToken;
 } Token;
 typedef struct TokenArray
 {
     Token* tokens;
     int length;
+    int contentLength;
 } TokenArray;
-
+Dictionary* storageVariables;
+void initiateStorageVariables(){
+    storageVariables = HashTable(90);
+}
+int add_variable(char* name, void* value, char* type){
+    Insert(storageVariables,name,value,type);
+    return 0;
+}
 TokenArray tokenize(char* temp){
     Token* tokens = (Token*)malloc(sizeof(Token)*1000);
     char* content = (char*)malloc(sizeof(char)*10001);
@@ -134,6 +144,50 @@ TokenArray tokenize(char* temp){
     tokenEntity.tokens = tokens;
     tokenEntity.length = id_token;
     return tokenEntity;
+}
+char* getName(char* name){
+    char* copy_name = name;
+    char* new_copy = malloc(sizeof(char)*strlen(name)-4);
+    int length = 0;
+    while (1)
+    {
+        if (*copy_name != START_STATEMENT && *copy_name != " "){
+            new_copy[length] = *copy_name;
+            length++; 
+        }
+        copy_name++;
+    }
+    return new_copy;
+}
+TokenArray analyzeTokens(TokenArray tokens){
+    tokens.contentLength = 0;
+    for (int i = 0; i < tokens.length; i++)
+    {
+        Token token = tokens.tokens[i];
+        if (token.Type == VAR){
+            // char* name = getName(token.content);
+            void* value = Get(storageVariables,token.content);
+            if (value != ""){
+                free(token.content); 
+                token.content = value;
+                tokens.contentLength += strlen(value);
+            }
+            else{
+                tokens.contentLength += strlen(token.content);
+            }
+
+        }
+    }
+    return tokens;
+}
+char* returnUpdatedContent(TokenArray tokens){ // return handled string after templating
+    char content[tokens.contentLength];
+    for (int i = 0; i < tokens.length; i++)
+    {
+        Token token = tokens.tokens[i];
+        strcat(content,token.content);
+    }
+    return content;
 }
 
 
