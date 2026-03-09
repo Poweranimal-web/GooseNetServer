@@ -4,6 +4,8 @@
 #define START_STATEMENT '{'
 #define LOOP_COND '%'
 #define END_STATEMENT '}'
+#ifndef TEMPLATE
+#define TEMPLATE
 enum type{
     TEXT,
     VAR,
@@ -16,7 +18,7 @@ typedef struct token
 {
     char* content;
     enum type Type;
-    Token* endToken;
+    struct token* endToken;
 } Token;
 typedef struct TokenArray
 {
@@ -24,6 +26,10 @@ typedef struct TokenArray
     int length;
     int contentLength;
 } TokenArray;
+struct TransformedVariable{
+    char* name;
+    int length;
+};
 Dictionary* storageVariables;
 void initiateStorageVariables(){
     storageVariables = HashTable(90);
@@ -45,9 +51,9 @@ TokenArray tokenize(char* temp){
     char* temproryText = temp;
     while (1)
     {
-        if (*temproryText == START_STATEMENT && *(temproryText+1) == START_STATEMENT){
-            content[length_content+1] = '\0'; 
+        if (*temproryText == START_STATEMENT && *(temproryText+1) == START_STATEMENT){ 
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
+            copy_content[length_content] = '\0';
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
@@ -62,8 +68,8 @@ TokenArray tokenize(char* temp){
             length_content += 1;
             content[length_content] = *(temproryText+1);
             length_content += 1;
-            content[length_content+1] = '\0';
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
+            copy_content[length_content] = '\0';
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
@@ -90,8 +96,8 @@ TokenArray tokenize(char* temp){
             length_content += 1;
             content[length_content] = *(temproryText+1);
             length_content += 1;
-            content[length_content+1] = '\0';
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
+            copy_content[length_content] = '\0';
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
@@ -130,8 +136,8 @@ TokenArray tokenize(char* temp){
             }
         }
         if (*temproryText == '\0'){
-            content[length_content+1] = '\0';
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
+            copy_content[length_content] = '\0';
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
@@ -147,48 +153,90 @@ TokenArray tokenize(char* temp){
 }
 char* getName(char* name){
     char* copy_name = name;
-    char* new_copy = malloc(sizeof(char)*strlen(name)-4);
+    char* new_copy = (char*)malloc(sizeof(char)*(strlen(name)-4+1));
     int length = 0;
     while (1)
     {
-        if (*copy_name != START_STATEMENT && *copy_name != " "){
+        if (*copy_name == '\0'){
+            break;
+        }
+        else if (*copy_name != START_STATEMENT && *copy_name != END_STATEMENT && *copy_name != ' '){
             new_copy[length] = *copy_name;
-            length++; 
+            length++;
         }
         copy_name++;
     }
+    new_copy[length] = '\0';
     return new_copy;
+}
+void replace(char* target, char* new_value){
+    int i=0;
+    for (i; i < strlen(new_value); i++)
+    {
+        target[i] = new_value[i];
+    }
 }
 TokenArray analyzeTokens(TokenArray tokens){
     tokens.contentLength = 0;
-    for (int i = 0; i < tokens.length; i++)
+    TokenArray copy_tokens = tokens;
+    for (int i = 0; i < copy_tokens.length; i++)
     {
-        Token token = tokens.tokens[i];
-        if (token.Type == VAR){
-            // char* name = getName(token.content);
-            void* value = Get(storageVariables,token.content);
-            if (value != ""){
-                free(token.content); 
-                token.content = value;
-                tokens.contentLength += strlen(value);
+        Token token = copy_tokens.tokens[i];      
+        // printf("Text: %s, Length: %d, \n", token.content, strlen(token.content));
+        if (token.Type == VAR){ 
+            char* name = getName(token.content);
+            char* value = (char*)Get(storageVariables, name);
+            if (strcmp(value, "") != 0){
+                replace(token.content, value);
+                token.content[strlen(value)] = '\0';
+                copy_tokens.contentLength += strlen(token.content);
             }
             else{
-                tokens.contentLength += strlen(token.content);
+                copy_tokens.contentLength += strlen(token.content);
             }
-
+        }
+        // else if (token.Type == LOOP)
+        // {
+            
+        // }
+        
+        else{
+            // printf("Text: %s, Length: %d, \n", token.content, strlen(token.content));
+            copy_tokens.contentLength += strlen(token.content);
         }
     }
-    return tokens;
+    return copy_tokens;
 }
-char* returnUpdatedContent(TokenArray tokens){ // return handled string after templating
-    char content[tokens.contentLength];
+int freeTokens(TokenArray tokens){
     for (int i = 0; i < tokens.length; i++)
     {
         Token token = tokens.tokens[i];
-        strcat(content,token.content);
+        free((&token)->content);
     }
+    free(tokens.tokens);
+    return 0;
+
+}
+char* returnUpdatedContent(TokenArray tokens){ // return handled string after templating
+    char* content = (char*)malloc(sizeof(char)*tokens.contentLength+1);
+    int length = 0;
+    for (int i = 0; i < tokens.length; i++)
+    {
+        Token token = tokens.tokens[i];
+        if (i == 0){
+            strcpy(content,token.content);
+            length += strlen(token.content);
+        }
+        else{
+            strcat(content,token.content);
+            length += strlen(token.content);
+        }
+    }
+    content[tokens.contentLength] = '\0';
+    freeTokens(tokens);
     return content;
 }
+#endif
 
 
 

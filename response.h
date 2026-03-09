@@ -4,6 +4,7 @@
 #include <time.h>
 #include <sys/socket.h>
 #include "client.h"
+#include "template.h"
 #include "../HashTable/hash.h"
 #ifndef RESPONSE
 #define RESPONSE
@@ -259,12 +260,22 @@ Response createHTMLResponse(char* path, char* status){ // create instance of res
     response.status = status;
     response.phrase = returnPhrase(response.status);
     response.version = "HTTP/1.1";
-    response.body = readHtml(path);
+    char* original_content = readHtml(path);
+    TokenArray tokens = tokenize(original_content);
+    TokenArray new_tokens = analyzeTokens(tokens);
+    char* content = returnUpdatedContent(new_tokens);
+    response.body = content;
     response.headers.Content_Type = "text/html";
     response.headers.Content_Length = strlen(response.body);
     response.headers.Connection = "close";
     time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
+    struct tm tm;
+    if (t == -1){
+        printf("Error, %s",strerror(errno));
+    }
+    if (localtime_r(&t, &tm) == NULL) {
+        printf("Error, %s",strerror(errno));
+    }
     sprintf(response.headers.Date,  "%s, %02d %02d %4d %02d:%02d:%02d GMT" ,
     weekDays[tm.tm_wday],tm.tm_mday,tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
     return response;
