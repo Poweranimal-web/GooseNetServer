@@ -17,8 +17,11 @@ enum type{
 typedef struct token
 {
     char* content;
+    int length;
     enum type Type;
-    struct token* endToken;
+    int total_elements; // for loop shows how many elements
+    struct token* nextToken;
+    struct token* lastToken;
 } Token;
 typedef struct TokenArray
 {
@@ -30,6 +33,19 @@ struct TransformedVariable{
     char* name;
     int length;
 };
+struct paramsLoop{
+    char* nameList;
+    char* nameItaretedVariable;
+};
+typedef struct element{
+    void* value;
+    char* type;
+} ArrayElement;
+
+typedef struct array_elements{
+    ArrayElement* array;
+    int length;
+} TemplateElements;
 Dictionary* storageVariables;
 void initiateStorageVariables(){
     storageVariables = HashTable(90);
@@ -48,17 +64,22 @@ TokenArray tokenize(char* temp){
     TokenArray tokenEntity;
     Token* token = (Token*)malloc(sizeof(Token));
     token->Type = TEXT;
+    token->nextToken = NULL;
+    token->lastToken = NULL;
     char* temproryText = temp;
     while (1)
     {
         if (*temproryText == START_STATEMENT && *(temproryText+1) == START_STATEMENT){ 
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
             copy_content[length_content] = '\0';
+            token->length = length_content;
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
             token = (Token*)malloc(sizeof(Token));
             token->Type = VAR;
+            token->nextToken = NULL;
+            token->lastToken = NULL;
             content = (char*)malloc(sizeof(char)*10001);
             length_content = 0;
             in_tag = 1;
@@ -70,10 +91,13 @@ TokenArray tokenize(char* temp){
             length_content += 1;
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
             copy_content[length_content] = '\0';
+            token->length = length_content;
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
             token = (Token*)malloc(sizeof(Token));
+            token->nextToken = NULL;
+            token->lastToken = NULL;
             content = (char*)malloc(sizeof(char)*10001);
             length_content = 0;
             in_tag = 0;
@@ -83,10 +107,14 @@ TokenArray tokenize(char* temp){
         }
         else if (*temproryText == START_STATEMENT && *(temproryText+1) == LOOP_COND){
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content);
+            copy_content[length_content] = '\0';
+            token->length = length_content;
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
             token = (Token*)malloc(sizeof(Token));
+            token->nextToken = NULL;
+            token->lastToken = NULL;
             content = (char*)malloc(sizeof(char)*10001);
             length_content = 0;
             in_tag = 1;
@@ -98,10 +126,13 @@ TokenArray tokenize(char* temp){
             length_content += 1;
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
             copy_content[length_content] = '\0';
+            token->length = length_content;
             token->content = copy_content;
             tokens[id_token] = *token;
             id_token +=1;
             token = (Token*)malloc(sizeof(Token));
+            token->nextToken = NULL;
+            token->lastToken = NULL;
             content = (char*)malloc(sizeof(char)*10001);
             length_content = 0;
             in_tag = 0;
@@ -137,6 +168,7 @@ TokenArray tokenize(char* temp){
         }
         if (*temproryText == '\0'){
             char* copy_content = (char*)realloc(content, sizeof(char)*length_content+1);
+            token->length = length_content;
             copy_content[length_content] = '\0';
             token->content = copy_content;
             tokens[id_token] = *token;
@@ -176,17 +208,144 @@ void replace(char* target, char* new_value){
         target[i] = new_value[i];
     }
 }
+struct paramsLoop getParams(char* loopToken){ // method for getting name of variable where data is storing in loop
+    char* copyToken = loopToken;
+    struct paramsLoop params;
+    int forBlock = 0;
+    int inBlock = 0;
+    char* buffer = (char*)malloc(sizeof(char)*1000);
+    int bufferLength = 0;
+    for (int i = 0; i < strlen(copyToken); i++)
+    {
+        if (copyToken[i] != START_STATEMENT && copyToken[i] != END_STATEMENT && copyToken[i] != LOOP_COND && copyToken[i] != ' '){
+            buffer[bufferLength] = copyToken[i];
+            bufferLength++;
+        }
+        else if (copyToken[i] == ' ' && bufferLength != 0){
+            buffer[bufferLength] = '\0';
+            if (strcmp(buffer,"for") == 0){
+                forBlock = 1;
+                free(buffer);
+                buffer = (char*)malloc(sizeof(char)*1000);
+                bufferLength = 0;
+                continue;
+            }
+            else if (strcmp(buffer,"in") == 0){
+                inBlock = 1;
+                free(buffer);
+                buffer = (char*)malloc(sizeof(char)*1000);
+                bufferLength = 0;
+                continue;
+            }
+            if (forBlock == 1){
+                buffer = (char*)realloc(buffer, sizeof(char)*bufferLength+1);
+                params.nameItaretedVariable = buffer;
+                buffer = (char*)malloc(sizeof(char)*1000);
+                bufferLength = 0;
+                forBlock = 0;
+                continue;
+            }
+            if (inBlock == 1){
+                buffer = realloc(buffer, sizeof(char)*bufferLength+1);
+                params.nameList = buffer;
+                inBlock = 0;
+                bufferLength = 0;
+                continue;
+            }   
+        }
+    }
+    if (inBlock != 0){
+        buffer = realloc(buffer, sizeof(char)*bufferLength);
+        params.nameList = buffer;
+    }
+    return params;
+}
+void handleLoop(Token loopToken,TokenArray* tokens, int* index){
+    struct paramsLoop params = getParams(loopToken.content);
+    TemplateElements* list = (TemplateElements*)Get(storageVariables,params.nameList); //!!! fix problem with array elements in order to get right length of elements in array
+    ArrayElement* list_values = list->array;
+    int TotalLengthOfElement = 0;
+    Token* token = &(tokens->tokens[*index]);
+    Token* token_referenceLast = NULL;
+    printf("Length: %d\n", list->length);
+    printf("Content first element: %s\n", list->array[0].value);
+    for (int i = 0; i < list->length;i++){
+
+        for (int j = *index; j < tokens->length; j++)
+        {   
+            Token next_token = tokens->tokens[j];
+            printf("j=%d,Content: %s \n", j, next_token.content);
+            if (i == 0){
+                TotalLengthOfElement++;
+            }
+            if (next_token.Type == VAR){
+                struct token* new_instance = (struct token*)malloc(sizeof(struct token));
+                new_instance->content = list_values[i].value;
+                new_instance->Type = VAR;
+                new_instance->nextToken = NULL;
+                if (token->nextToken == NULL){
+                    token->nextToken = new_instance;
+                    token_referenceLast = new_instance;
+                }
+                else{
+                    token_referenceLast->nextToken = new_instance;
+                    token_referenceLast = new_instance;
+
+                }
+                tokens->contentLength += strlen(list_values[i].value);
+            }
+            else if (next_token.Type == TEXT){
+                struct token* new_instance = (struct token*)malloc(sizeof(struct token));
+                new_instance->content = next_token.content;
+                new_instance->Type = TEXT;
+                new_instance->nextToken = NULL;
+                if (token->nextToken == NULL){
+                    token->nextToken = new_instance;
+                    token_referenceLast = new_instance;
+                }
+                else{
+                    token_referenceLast->nextToken = new_instance;
+                    token_referenceLast = new_instance;
+
+                }
+                tokens->contentLength += strlen(next_token.content);
+            }
+            else if (next_token.Type == END_LOOP){
+                break;
+            }
+        }
+    }
+    token->total_elements = TotalLengthOfElement;
+    *index = (*index) + TotalLengthOfElement;
+}
+void handleVar(Token* tokenVar, TokenArray* tokens, int* index){
+    char* name = getName(tokenVar->content);
+    char* value = (char*)Get(storageVariables, name);
+    if (*index == 0){
+        if (strcmp(value, "") != 0){
+            replace(tokenVar->content, value);
+            tokenVar->content[strlen(value)] = '\0';
+            tokens->contentLength += strlen(tokenVar->content);
+        }
+        else{
+            tokens->contentLength += strlen(tokenVar->content);
+        }
+    }
+    else{
+
+    }
+}
 TokenArray analyzeTokens(TokenArray tokens){
     tokens.contentLength = 0;
     TokenArray copy_tokens = tokens;
     for (int i = 0; i < copy_tokens.length; i++)
     {
         Token token = copy_tokens.tokens[i];      
-        // printf("Text: %s, Length: %d, \n", token.content, strlen(token.content));
         if (token.Type == VAR){ 
             char* name = getName(token.content);
             char* value = (char*)Get(storageVariables, name);
             if (strcmp(value, "") != 0){
+                token.content = (char*)realloc(token.content,sizeof(char)*strlen(value));
                 replace(token.content, value);
                 token.content[strlen(value)] = '\0';
                 copy_tokens.contentLength += strlen(token.content);
@@ -195,13 +354,12 @@ TokenArray analyzeTokens(TokenArray tokens){
                 copy_tokens.contentLength += strlen(token.content);
             }
         }
-        // else if (token.Type == LOOP)
-        // {
-            
-        // }
+        else if (token.Type == LOOP)
+        {
+            handleLoop(token,&copy_tokens,&i);
+        }
         
         else{
-            // printf("Text: %s, Length: %d, \n", token.content, strlen(token.content));
             copy_tokens.contentLength += strlen(token.content);
         }
     }
@@ -228,8 +386,21 @@ char* returnUpdatedContent(TokenArray tokens){ // return handled string after te
             length += strlen(token.content);
         }
         else{
-            strcat(content,token.content);
-            length += strlen(token.content);
+            if (token.Type == LOOP){
+
+                Token* current_element = token.nextToken;
+                while (current_element != NULL)
+                {
+                    strcat(content,current_element->content);
+                    current_element = current_element->nextToken;  
+                }
+                i = i + token.length;
+                continue;
+            }
+            else if (token.Type != END_LOOP){
+                strcat(content,token.content);
+                length += strlen(token.content);
+            }
         }
     }
     content[tokens.contentLength] = '\0';

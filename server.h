@@ -101,6 +101,7 @@ void* handleRequests(void *param){ // handling request is here
     return NULL;
 }
 void startListing(Server object){
+    initiateStorageVariables();
     pthread_t thread_token;
     pthread_create(&thread_token, NULL,start_loop,NULL);
     Events events;
