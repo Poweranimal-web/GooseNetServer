@@ -262,7 +262,7 @@ struct paramsLoop getParams(char* loopToken){ // method for getting name of vari
 }
 void handleLoop(Token loopToken,TokenArray* tokens, int* index){
     struct paramsLoop params = getParams(loopToken.content);
-    TemplateElements* list = (TemplateElements*)Get(storageVariables,params.nameList); //!!! fix problem with array elements in order to get right length of elements in array
+    TemplateElements* list = (TemplateElements*)Get(storageVariables,params.nameList);
     ArrayElement* list_values = list->array;
     int TotalLengthOfElement = 0;
     Token* token = &(tokens->tokens[*index]);
@@ -270,17 +270,26 @@ void handleLoop(Token loopToken,TokenArray* tokens, int* index){
     printf("Length: %d\n", list->length);
     printf("Content first element: %s\n", list->array[0].value);
     for (int i = 0; i < list->length;i++){
-
+        add_variable(params.nameItaretedVariable, list_values[i].value, "string");
         for (int j = *index; j < tokens->length; j++)
         {   
             Token next_token = tokens->tokens[j];
-            printf("j=%d,Content: %s \n", j, next_token.content);
             if (i == 0){
                 TotalLengthOfElement++;
             }
             if (next_token.Type == VAR){
                 struct token* new_instance = (struct token*)malloc(sizeof(struct token));
-                new_instance->content = list_values[i].value;
+                char* name = getName(next_token.content); // getting name of variable
+                char* value = (char*)Get(storageVariables, name);// getting value of variable
+                if (strcmp(value, "") != 0){ // if value exists, It applies on the new object
+                    new_instance->content = value;
+                    tokens->contentLength += strlen(value);
+                }
+                else{  // if value doesn't exist, It applies an old content on the new object
+                    new_instance->content = next_token.content;
+                    tokens->contentLength += strlen(next_token.content);
+                }
+                /* put instance in linked list, bottom code: */
                 new_instance->Type = VAR;
                 new_instance->nextToken = NULL;
                 if (token->nextToken == NULL){
@@ -290,9 +299,7 @@ void handleLoop(Token loopToken,TokenArray* tokens, int* index){
                 else{
                     token_referenceLast->nextToken = new_instance;
                     token_referenceLast = new_instance;
-
                 }
-                tokens->contentLength += strlen(list_values[i].value);
             }
             else if (next_token.Type == TEXT){
                 struct token* new_instance = (struct token*)malloc(sizeof(struct token));
