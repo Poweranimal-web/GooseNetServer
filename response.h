@@ -261,6 +261,10 @@ Response createHTMLResponse(char* path, char* status){ // create instance of res
     response.phrase = returnPhrase(response.status);
     response.version = "HTTP/1.1";
     char* original_content = readHtml(path);
+    // if (strcmp(status, "200") == 0){
+    //      printf("Body: %s\n", original_content);
+    //     printf("Length: %d\n",strlen(original_content));   
+    // }
     TokenArray tokens = tokenize(original_content);
     TokenArray new_tokens = analyzeTokens(tokens);
     char* content = returnUpdatedContent(new_tokens);

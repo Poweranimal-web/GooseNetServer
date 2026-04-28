@@ -17,9 +17,10 @@ enum type{
 typedef struct token
 {
     char* content;
-    int length;
+    int length; // getting text content length
     enum type Type;
     int total_elements; // for loop shows how many elements
+    int isTrueCond; // to identify is true condtion 
     struct token* nextToken;
     struct token* lastToken;
 } Token;
@@ -37,6 +38,10 @@ struct paramsLoop{
     char* nameList;
     char* nameItaretedVariable;
 };
+struct paramsCond{
+    char* nameVariable;
+    char* valueEql;
+};
 typedef struct element{
     void* value;
     char* type;
@@ -47,10 +52,17 @@ typedef struct array_elements{
     int length;
 } TemplateElements;
 Dictionary* storageVariables;
+int Initiated = 0;
 void initiateStorageVariables(){
-    storageVariables = HashTable(90);
+    if (Initiated != 1){
+        storageVariables = HashTable(90);
+        Initiated = 1;
+    }
 }
 int add_variable(char* name, void* value, char* type){
+    if (Initiated == 0){
+        initiateStorageVariables();
+    }
     Insert(storageVariables,name,value,type);
     return 0;
 }
@@ -147,14 +159,17 @@ TokenArray tokenize(char* temp){
         }
         else if ((*temproryText == 'i' && *(temproryText+1) == 'f') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
             token->Type = COND;
+            token->isTrueCond = 0;
             detect_tag=1;
         }
         else if ((*temproryText == 'e' && *(temproryText+1) == 'l' && *(temproryText+2) == 'i' && *(temproryText+3) == 'f') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
             token->Type = COND;
+            token->isTrueCond = 0;
             detect_tag=1;
         }
         else if ((*temproryText == 'e' && *(temproryText+1) == 'n' && *(temproryText+2) == 'd' && *(temproryText+3) == 'i' && *(temproryText+4) == 'f') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
             token->Type = END_COND;
+            token->isTrueCond = 0;
             detect_tag=1;
         }
         else if ((*temproryText == 'e' && *(temproryText+1) == 'n' && *(temproryText+2) == 'd' && *(temproryText+3) == 'f' && *(temproryText+4) == 'o' && *(temproryText+5) == 'r') && in_tag == 1 && detect_tag==0){ // check if it is condtion start with 'if' operator with space or neither
@@ -260,6 +275,58 @@ struct paramsLoop getParams(char* loopToken){ // method for getting name of vari
     }
     return params;
 }
+struct paramsCond extractCondition(char* content){
+    char* copyToken = content;
+    struct paramsCond params;
+    int ifBlock = 0;
+    int equelBlock = 0;
+    char* buffer = (char*)malloc(sizeof(char)*1000);
+    int bufferLength = 0;
+    for (int i = 0; i < strlen(copyToken); i++)
+    {
+        if (copyToken[i] != START_STATEMENT && copyToken[i] != END_STATEMENT && copyToken[i] != LOOP_COND && copyToken[i] != ' '){
+            buffer[bufferLength] = copyToken[i];
+            bufferLength++;
+        }
+        else if (copyToken[i] == ' ' && bufferLength != 0){
+            buffer[bufferLength] = '\0';
+            if (strcmp(buffer,"if") == 0 || strcmp(buffer,"elif") == 0){
+                ifBlock = 1;
+                free(buffer);
+                buffer = (char*)malloc(sizeof(char)*1000);
+                bufferLength = 0;
+                continue;
+            }
+            else if (strcmp(buffer,"==") == 0){
+                equelBlock = 1;
+                free(buffer);
+                buffer = (char*)malloc(sizeof(char)*1000);
+                bufferLength = 0;
+                continue;
+            }
+            if (ifBlock == 1){
+                buffer = (char*)realloc(buffer, sizeof(char)*bufferLength+1);
+                params.nameVariable = buffer;
+                buffer = (char*)malloc(sizeof(char)*1000);
+                bufferLength = 0;
+                ifBlock = 0;
+                continue;
+            }
+            if (equelBlock == 1){
+                buffer = realloc(buffer, sizeof(char)*bufferLength+1);
+                params.valueEql = buffer;
+                equelBlock = 0;
+                bufferLength = 0;
+                continue;
+            }   
+        }
+    }
+    if (equelBlock != 0){
+        buffer = realloc(buffer, sizeof(char)*bufferLength);
+        params.valueEql = buffer;
+    }
+    return params;
+}
 void handleLoop(Token loopToken,TokenArray* tokens, int* index){
     struct paramsLoop params = getParams(loopToken.content);
     TemplateElements* list = (TemplateElements*)Get(storageVariables,params.nameList);
@@ -267,8 +334,6 @@ void handleLoop(Token loopToken,TokenArray* tokens, int* index){
     int TotalLengthOfElement = 0;
     Token* token = &(tokens->tokens[*index]);
     Token* token_referenceLast = NULL;
-    printf("Length: %d\n", list->length);
-    printf("Content first element: %s\n", list->array[0].value);
     for (int i = 0; i < list->length;i++){
         add_variable(params.nameItaretedVariable, list_values[i].value, "string");
         for (int j = *index; j < tokens->length; j++)
@@ -315,7 +380,7 @@ void handleLoop(Token loopToken,TokenArray* tokens, int* index){
                     token_referenceLast = new_instance;
 
                 }
-                tokens->contentLength += strlen(next_token.content);
+                tokens->contentLength += next_token.length;
             }
             else if (next_token.Type == END_LOOP){
                 break;
@@ -342,17 +407,114 @@ void handleVar(Token* tokenVar, TokenArray* tokens, int* index){
 
     }
 }
+void handleCondion(Token loopToken,TokenArray* tokens, int* index){
+    Token* token = &(tokens->tokens[*index]); // for storing orginal version of condtional token
+    int endCond = 0;
+    while (endCond != 1)
+    {
+        if (token->Type == COND){
+                struct paramsCond params = extractCondition(token->content);
+                char* value = (char*)Get(storageVariables, params.nameVariable);
+                if (strcmp(value, params.valueEql) == 0){
+                    token->isTrueCond = 1;
+                    Token* token_referenceLast = NULL;
+                    int counter = 0;
+                    int j = (*index)+1;
+                    for (j; j < tokens->length; j++)
+                    {
+                        Token* new_element = &tokens->tokens[j];
+                        counter++;
+                        if (new_element->Type == TEXT){
+                            if (token->nextToken == NULL){
+                                token->nextToken = new_element;
+                                token_referenceLast = new_element;
+                            }
+                            else{
+                                token_referenceLast->nextToken = new_element;
+                                token_referenceLast = new_element;
+                            }
+                            tokens->contentLength += new_element->length;
+                        }
+                        else if (new_element->Type == VAR){
+                            char* name = getName(new_element->content); // getting name of variable
+                            char* value = (char*)Get(storageVariables, name);// getting value of variable
+                            if (strcmp(value, "") != 0){ // if value exists, It applies on the new object
+                                new_element->content = value;
+                                tokens->contentLength += strlen(value);
+                            }
+                            else{  // if value doesn't exist, It applies an old content on the new object
+                                tokens->contentLength += strlen(new_element->content);
+                            }
+                            if (token->nextToken == NULL){
+                                token->nextToken = new_element;
+                                token_referenceLast = new_element;
+                            }
+                            else{
+                                token_referenceLast->nextToken = new_element;
+                                token_referenceLast = new_element;
+                            }
+
+                        }
+                        else if (new_element->Type == COND){
+                            token->total_elements = counter;
+                            *index = j-1;
+                            break;
+                        }
+                        else if (new_element->Type == END_COND){
+                            token->total_elements = counter;
+                            *index = j;
+                            endCond = 1;
+                            break;
+                        }
+                    }
+            }
+            else{
+                token->isTrueCond = 0;
+                int counter = 0;
+                int j = (*index)+1;
+                for (j; j < tokens->length; j++)
+                    {
+                        Token* new_element = &tokens->tokens[j];
+                        counter++;
+                        if (new_element->Type == COND){
+                            token->total_elements = counter;
+                            *index = j-1;
+                            break;
+                        }
+                        else if (new_element->Type == END_COND){
+                            token->total_elements = counter;
+                            *index = j;
+                            endCond = 1;
+                            break;
+                        }
+                    }
+
+            }
+            
+        }        
+        (*index)++;
+        token = &(tokens->tokens[*index]);
+                
+    }
+}
+void printTokens(TokenArray tokens){
+    for (int i = 0; i < tokens.length; i++)
+    {
+        Token token = tokens.tokens[i];
+        printf("Token %d, Content: %s\n",i,token.content);
+    } 
+}
 TokenArray analyzeTokens(TokenArray tokens){
     tokens.contentLength = 0;
     TokenArray copy_tokens = tokens;
     for (int i = 0; i < copy_tokens.length; i++)
     {
-        Token token = copy_tokens.tokens[i];      
+        Token token = copy_tokens.tokens[i];
         if (token.Type == VAR){ 
             char* name = getName(token.content);
             char* value = (char*)Get(storageVariables, name);
             if (strcmp(value, "") != 0){
-                token.content = (char*)realloc(token.content,sizeof(char)*strlen(value));
+                token.content = (char*)realloc(token.content,sizeof(char)*(strlen(value)+1));
                 replace(token.content, value);
                 token.content[strlen(value)] = '\0';
                 copy_tokens.contentLength += strlen(token.content);
@@ -365,48 +527,69 @@ TokenArray analyzeTokens(TokenArray tokens){
         {
             handleLoop(token,&copy_tokens,&i);
         }
-        
+        else if (token.Type == COND){
+            handleCondion(token,&copy_tokens,&i);
+        }
         else{
-            copy_tokens.contentLength += strlen(token.content);
+            copy_tokens.contentLength += token.length;
+            
         }
     }
+    printTokens(copy_tokens);
     return copy_tokens;
 }
 int freeTokens(TokenArray tokens){
     for (int i = 0; i < tokens.length; i++)
     {
         Token token = tokens.tokens[i];
-        free((&token)->content);
+        if ((&token)->content != NULL){
+            free((&token)->content);
+        }
     }
-    free(tokens.tokens);
+    if (tokens.tokens != NULL){
+        free(tokens.tokens);
+    }
     return 0;
 
 }
 char* returnUpdatedContent(TokenArray tokens){ // return handled string after templating
-    char* content = (char*)malloc(sizeof(char)*tokens.contentLength+1);
-    int length = 0;
+    char* content = (char*)malloc(sizeof(char)*(tokens.contentLength+100));
     for (int i = 0; i < tokens.length; i++)
     {
         Token token = tokens.tokens[i];
         if (i == 0){
             strcpy(content,token.content);
-            length += strlen(token.content);
         }
         else{
             if (token.Type == LOOP){
-
                 Token* current_element = token.nextToken;
                 while (current_element != NULL)
                 {
                     strcat(content,current_element->content);
                     current_element = current_element->nextToken;  
                 }
-                i = i + token.length;
+                i = i + token.total_elements;
                 continue;
             }
-            else if (token.Type != END_LOOP){
-                strcat(content,token.content);
-                length += strlen(token.content);
+            else if (token.Type == COND && token.isTrueCond == 1){
+                Token* current_element = token.nextToken;
+                while (current_element != NULL)
+                {
+                    strcat(content,current_element->content);
+                    current_element = current_element->nextToken;  
+                }
+                i = i + (token.total_elements-1);
+                continue;
+            }
+            else if (token.Type == COND && token.isTrueCond == 0){
+                i = i + (token.total_elements-1);
+                continue;
+            }
+            else if (token.Type != END_LOOP && token.Type != END_COND){
+                if (token.content != NULL){
+                    strcat(content,token.content);
+                }
+                
             }
         }
     }

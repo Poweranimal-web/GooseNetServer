@@ -178,6 +178,7 @@ void startListing(Server object){
 }
 #else
 void startListing(Server object){
+    initiateStorageVariables();
     pthread_t thread_token;
     pthread_create(&thread_token, NULL,start_loop,NULL);
     int sock = socket(AF_INET,SOCK_STREAM,0);
